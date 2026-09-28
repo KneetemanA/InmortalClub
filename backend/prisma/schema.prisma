@@ -1,0 +1,281 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum MemberStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum BenefitType {
+  FOUNDER
+  LIFA
+  CUSTOM
+}
+
+enum MemberBenefitRelation {
+  HOLDER
+  FAMILY
+}
+
+enum PaymentMethod {
+  CASH
+  TRANSFER
+}
+
+enum PaymentStatus {
+  PAID
+  CANCELLED
+}
+
+enum FinancialMovementType {
+  INCOME
+  EXPENSE
+}
+
+enum FinancialCategoryType {
+  INCOME
+  EXPENSE
+}
+
+enum AuditAction {
+  CREATE
+  UPDATE
+  CANCEL
+  DELETE
+}
+
+model Role {
+  id        String   @id @default(uuid())
+  name      String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  users     User[]
+
+  @@map("roles")
+}
+
+model User {
+  id        String   @id @default(uuid())
+  name      String
+  email     String   @unique
+  password  String
+  active    Boolean  @default(true)
+
+  roleId    String
+  role      Role     @relation(fields: [roleId], references: [id])
+  payments  Payment[]
+  financialMovements FinancialMovement[]
+  auditLogs AuditLog[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("users")
+}
+
+model Member {
+  id               String       @id @default(uuid())
+
+  firstName        String
+  lastName         String
+  dni              String       @unique
+  phone            String
+  email            String?
+  birthDate        DateTime?
+  enrollmentDate   DateTime     @default(now())
+
+  status           MemberStatus @default(ACTIVE)
+
+  token            String?      @unique
+  notes            String?
+
+  benefits         MemberBenefit[]
+  payments         Payment[]
+
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+
+  @@map("members")
+}
+
+model Benefit {
+  id                  String      @id @default(uuid())
+
+  name                String
+  description         String?
+  type                BenefitType
+
+  discountPercentage  Decimal
+  onlyFullPass        Boolean     @default(true)
+  active              Boolean     @default(true)
+
+  memberBenefits      MemberBenefit[]
+  appliedPayments     Payment[]
+
+  createdAt           DateTime    @default(now())
+  updatedAt           DateTime    @updatedAt
+
+  @@map("benefits")
+}
+
+model MemberBenefit {
+  id          String                  @id @default(uuid())
+
+  memberId    String
+  benefitId   String
+
+  relation    MemberBenefitRelation   @default(HOLDER)
+
+  startDate   DateTime
+  endDate     DateTime?
+
+  active      Boolean                 @default(true)
+
+  notes       String?
+
+  member      Member                  @relation(fields: [memberId], references: [id])
+
+  benefit     Benefit                 @relation(fields: [benefitId], references: [id])
+
+  createdAt   DateTime                @default(now())
+  updatedAt   DateTime                @updatedAt
+
+  @@unique([memberId, benefitId])
+  @@index([memberId])
+  @@index([benefitId])
+  @@map("member_benefits")
+}
+
+model Plan {
+  id          String   @id @default(uuid())
+
+  name        String   @unique
+  description String?
+  price       Decimal
+  
+  active      Boolean  @default(true)
+  payments    Payment[]
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("plans")
+}
+
+model Payment {
+  id        String        @id @default(uuid())
+
+  memberId  String
+  planId    String
+  userId    String
+
+  appliedBenefitId String?
+
+  priceOriginal      Decimal
+  discountPercentage Decimal     @default(0)
+  discountAmount     Decimal     @default(0)
+  finalAmount        Decimal
+
+  paymentDate DateTime    @default(now())
+  expirationDate DateTime
+
+  paymentMethod PaymentMethod
+  status        PaymentStatus @default(PAID)
+  
+  cancellationReason String?
+
+  member Member @relation(fields: [memberId], references: [id])
+
+  plan Plan @relation(fields: [planId], references: [id])
+
+  user User @relation(fields: [userId], references: [id])
+
+  appliedBenefit Benefit? @relation(fields: [appliedBenefitId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([memberId])
+  @@index([planId])
+  @@index([userId])
+  @@index([expirationDate])
+
+  @@map("payments")
+}
+
+model FinancialCategory {
+  id        String                @id @default(uuid())
+
+  name      String
+  type      FinancialCategoryType
+
+  active    Boolean               @default(true)
+
+  movements FinancialMovement[]
+
+  createdAt DateTime              @default(now())
+  updatedAt DateTime              @updatedAt
+
+  @@unique([name, type])
+
+  @@map("financial_categories")
+}
+
+model FinancialMovement {
+  id          String                @id @default(uuid())
+
+  type        FinancialMovementType
+
+  categoryId  String
+  userId      String
+
+  amount      Decimal
+
+  description String?
+  movementDate DateTime             @default(now())
+
+  category    FinancialCategory @relation(fields: [categoryId], references: [id])
+
+  user User @relation(fields: [userId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([type])
+  @@index([categoryId])
+  @@index([userId])
+  @@index([movementDate])
+
+  @@map("financial_movements")
+}
+
+model AuditLog {
+  id        String      @id @default(uuid())
+
+  userId    String
+
+  action    AuditAction
+
+  entity    String
+  entityId  String
+
+  oldData   Json?
+  newData   Json?
+
+  user      User @relation(fields: [userId], references: [id])
+
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([entity])
+  @@index([entityId])
+  @@index([createdAt])
+
+  @@map("audit_logs")
+}
