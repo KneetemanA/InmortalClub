@@ -9,45 +9,19 @@ import Finances from './pages/Finances';
 import Plans from './pages/Plans';
 import Audit from './pages/Audit';
 import Profile from './pages/Profile';
+import Users from './pages/Users';
 
-function Protected() {
-  const { user } = useAuth();
-  return user ? <Layout /> : <Navigate to="/login" replace />;
-}
-
-function Admin({ children }: { children: React.ReactNode }) {
-  const { user } = useAuth();
-  return user?.role.name === 'ADMIN' ? children : <Navigate to="/" replace />;
-}
-
+function Protected() { const { user } = useAuth(); return user ? <Layout /> : <Navigate to="/login" replace />; }
+function Admin({ children }: { children: React.ReactNode }) { const { user } = useAuth(); return user?.role.name === 'ADMIN' ? children : <Navigate to="/" replace />; }
 export default function App() {
   const { user } = useAuth();
-
-  return (
-    <Routes>
-      <Route
-        path="/login"
-        element={user ? <Navigate to="/" replace /> : <Login />}
-      />
-
-      <Route element={<Protected />}>
-        <Route index element={<Dashboard />} />
-        <Route path="socios" element={<Members />} />
-        <Route path="pagos" element={<Payments />} />
-        <Route path="finanzas" element={<Finances />} />
-        <Route path="planes" element={<Plans />} />
-        <Route
-          path="auditoria"
-          element={
-            <Admin>
-              <Audit />
-            </Admin>
-          }
-        />
-        <Route path="perfil" element={<Profile />} />
-      </Route>
-
-      <Route path="*" element={<Navigate to="/" replace />} />
-    </Routes>
-  );
+  return <Routes>
+    <Route path="/login" element={user ? <Navigate to="/" replace /> : <Login />} />
+    <Route element={<Protected />}>
+      <Route index element={<Dashboard />} /><Route path="socios" element={<Members />} /><Route path="pagos" element={<Payments />} />
+      <Route path="finanzas" element={<Finances />} /><Route path="planes" element={<Plans />} />
+      <Route path="auditoria" element={<Admin><Audit /></Admin>} /><Route path="usuarios" element={<Admin><Users /></Admin>} /><Route path="perfil" element={<Profile />} />
+    </Route>
+    <Route path="*" element={<Navigate to="/" replace />} />
+  </Routes>;
 }

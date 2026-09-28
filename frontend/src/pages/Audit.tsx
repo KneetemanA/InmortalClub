@@ -30,6 +30,7 @@ export default function Audit() {
                     <option value="PAYMENT">Pagos</option>
                     <option value="PLAN">Planes</option>
                     <option value="FINANCIAL_MOVEMENT">Finanzas</option>
+                    <option value="USER">Usuarios</option>
                 </select>
 
                 <select
@@ -79,6 +80,7 @@ function entityLabel(v: string) {
         PAYMENT: 'Pago',
         PLAN: 'Plan',
         FINANCIAL_MOVEMENT: 'Movimiento financiero',
-        FINANCIAL_CATEGORY: 'Categoría'
+        FINANCIAL_CATEGORY: 'Categoría',
+        USER: 'Usuario'
     } as Record<string, string>)[v] || v
 }

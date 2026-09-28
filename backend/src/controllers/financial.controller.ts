@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { FinancialService } from '../services/financial.service';
 import { ensureString, ensureQueryString } from '../utils/helpers';
+import { Prisma } from '@prisma/client';
 
 const financialService = new FinancialService();
 
@@ -210,6 +211,10 @@ export class FinancialController {
         message: 'Categoría creada exitosamente',
       });
     } catch (error) {
+      if ((error instanceof Error && error.message.startsWith('La categoría ') && error.message.includes(' ya existe')) ||
+          (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002')) {
+        return res.status(409).json({ success: false, message: 'Ya existe una categoría con ese nombre y tipo.' });
+      }
       next(error);
     }
   }

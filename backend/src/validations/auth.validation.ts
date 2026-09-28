@@ -6,10 +6,10 @@ export const loginSchema = z.object({
 });
 
 export const registerSchema = z.object({
-  name: z.string().min(2, 'El nombre debe tener al menos 2 caracteres'),
-  email: z.string().email('Email inválido'),
+  name: z.string().trim().min(2, 'El nombre debe tener al menos 2 caracteres'),
+  email: z.string().trim().toLowerCase().email('Email inválido'),
   password: z.string().min(6, 'La contraseña debe tener al menos 6 caracteres'),
-  roleId: z.string().uuid('ID de rol inválido'),
+  roleName: z.enum(['ADMIN', 'RECEPTIONIST']),
 });
 
 export const changePasswordSchema = z.object({

@@ -4,6 +4,8 @@ import helmet from 'helmet';
 import morgan from 'morgan';
 import rateLimit from 'express-rate-limit';
 import swaggerUi from 'swagger-ui-express';
+import fs from 'node:fs';
+import path from 'node:path';
 import { env } from './config/env';
 import { swaggerSpec } from './config/swagger';
 import './types';
@@ -57,6 +59,16 @@ app.get('/health', (req: Request, res: Response) => {
     uptime: process.uptime(),
   });
 });
+
+// En Render, el backend también publica la versión compilada de React.
+const frontendDist = path.resolve(__dirname, '../../../frontend/dist');
+if (fs.existsSync(path.join(frontendDist, 'index.html'))) {
+  app.use(express.static(frontendDist));
+  app.get(/.*/, (req: Request, res: Response, next: NextFunction) => {
+    if (req.path.startsWith('/api') || req.path === '/health' || !req.accepts('html')) return next();
+    res.sendFile(path.join(frontendDist, 'index.html'));
+  });
+}
 
 // 404 handler
 app.use((req: Request, res: Response) => {
