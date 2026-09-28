@@ -1,5 +1,5 @@
 export type Role = { id: string; name: 'ADMIN' | 'RECEPTIONIST' };
-export type User = { id: string; name: string; email: string; roleId: string; active: boolean; role: Role };
+export type User = { id: string; name: string; email: string; roleId: string; active: boolean; role: Role; createdAt?: string };
 export type Plan = { id: string; name: string; description?: string; price: string | number; active: boolean };
 export type Benefit = { id: string; name: string; description?: string; type: 'FOUNDER' | 'LIFA' | 'CUSTOM'; discountPercentage: string | number; onlyFullPass: boolean; active: boolean };
 export type MemberBenefit = { id: string; active: boolean; benefit: Benefit };

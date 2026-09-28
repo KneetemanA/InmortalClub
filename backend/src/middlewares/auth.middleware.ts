@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { AuthService } from '../services/auth.service';
+import prisma from '../config/database';
 
 const authService = new AuthService();
 
@@ -43,7 +44,18 @@ export const authMiddleware = async (
       roleName: string;
     };
 
-    req.user = decoded;
+    // Los permisos y el estado de la cuenta se consultan en cada petición protegida.
+    const currentUser = await prisma.user.findUnique({
+      where: { id: decoded.id },
+      include: { role: true },
+    });
+    if (!currentUser || !currentUser.active) {
+      return res.status(401).json({ success: false, message: 'Cuenta inactiva o inexistente' });
+    }
+    req.user = {
+      id: currentUser.id, email: currentUser.email, name: currentUser.name,
+      roleId: currentUser.roleId, roleName: currentUser.role.name,
+    };
     next();
   } catch (error) {
     return res.status(401).json({

@@ -27,6 +27,6 @@ export const periodSummarySchema = z.object({
 });
 
 export const createCategorySchema = z.object({
-  name: z.string().min(2, 'El nombre de la categoría debe tener al menos 2 caracteres'),
+  name: z.string().trim().min(2, 'El nombre de la categoría debe tener al menos 2 caracteres'),
   type: z.enum(['INCOME', 'EXPENSE']),
 });

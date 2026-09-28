@@ -2,6 +2,19 @@
 
 Sistema de gestión de socios, cuotas y finanzas. El proyecto contiene el backend original y un frontend administrativo en React + TypeScript.
 
+## Publicar en Render
+
+El archivo `render.yaml` de esta carpeta crea un **servicio web** (React + API en el mismo dominio) y una base PostgreSQL. El servicio aplica las migraciones antes de iniciar y crea el administrador inicial solo si el email aún no existe. No copia los datos de tu PostgreSQL local.
+
+1. Creá un repositorio en GitHub y subí **el contenido de la carpeta `InmortalClub` a la raíz** (de modo que `render.yaml`, `backend` y `frontend` queden en el primer nivel). No subas archivos `.env`, `node_modules` ni `dist`.
+2. En [Render](https://dashboard.render.com/), elegí **New → Blueprint**, conectá ese repositorio y revisá los recursos antes de confirmar.
+3. Cuando Render solicite las variables, completá `ADMIN_EMAIL` (por ejemplo, tu correo de administración) y una `ADMIN_PASSWORD` nueva de al menos 6 caracteres. `DATABASE_URL` y `JWT_SECRET` se configuran automáticamente en el Blueprint. No agregues `VITE_API_URL`: React llamará a `/api` en el mismo dominio.
+4. Esperá a que el despliegue termine. Abrí la URL del servicio y probá `/health` y el inicio de sesión. Si tenías datos en tu base local, tendrás que importarlos aparte; crear una base nueva en Render empieza con tablas vacías, salvo la cuenta administradora.
+
+**Antes de usarlo con datos reales:** el Blueprint usa el plan gratuito para empezar. Render indica que su PostgreSQL gratuito caduca a los 30 días; elegí un plan de base de datos pago para conservar datos operativos, o cambiá `databases[0].plan` en `render.yaml` antes de crear el Blueprint. El servidor gratuito también puede suspenderse por inactividad.
+
+Si el despliegue falla, revisá el log del servicio: el comando de compilación instala dependencias, genera Prisma y construye backend y frontend; el comando de inicio aplica migraciones y crea el administrador inicial. Los usuarios, socios y movimientos de tu base local no se transfieren al publicar el código.
+
 ## Requisitos
 
 - Node.js 20 o superior
@@ -43,8 +56,10 @@ VITE_API_URL=http://localhost:3000/api
 - Primer pago automático al registrar un socio.
 - Registro de pagos, renovación de cuotas y alertas de vencimiento.
 - Gestión de ingresos y egresos con resumen por período.
+- Creación de categorías de ingresos y egresos desde Finanzas para administradores; el formulario avisa cuando todavía no hay categorías disponibles.
 - Administración de planes y visualización de beneficios.
 - Auditoría exclusiva para administradores.
+- Alta de usuarios administradores y recepcionistas desde **Usuarios** (solo administradores), con listado y registro de la creación en auditoría.
 - Cambio de contraseña.
 - Diseño responsive para escritorio, tablet y celular.
 
@@ -52,6 +67,12 @@ VITE_API_URL=http://localhost:3000/api
 
 - `ADMIN`: acceso completo, edición de planes y auditoría.
 - `RECEPTIONIST`: operación diaria de socios, pagos y finanzas.
+
+Para crear un acceso, ingresá con una cuenta `ADMIN`, abrí **Usuarios → Nuevo usuario**, completá nombre, email, rol y contraseña. La cuenta nueva ya puede iniciar sesión. No confundas esta sección con **Socios**, que sigue igual.
+
+Si no existe ninguna cuenta administradora en la base configurada, completá `ADMIN_EMAIL` y `ADMIN_PASSWORD` en `backend/.env` y ejecutá `cd backend && npm run admin:bootstrap`. Este comando solo crea esa cuenta si falta; no cambia su contraseña si ya existe y no modifica socios ni planes. Un error de credenciales desde la primera búsqueda indica que el email no figura en la base a la que apunta `DATABASE_URL`.
+
+API: `GET /api/auth/users` lista las cuentas y `POST /api/auth/register` acepta `name`, `email`, `password` y `roleName` (`ADMIN` o `RECEPTIONIST`). Ambas rutas requieren el token de un administrador. Los roles deben existir en la base; el seed del backend los crea si falta alguno.
 
 ## Actualización Inmortal Club
 

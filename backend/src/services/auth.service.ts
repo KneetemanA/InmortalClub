@@ -7,7 +7,7 @@ import jwt from 'jsonwebtoken';
 export class AuthService {
   async login(email: string, password: string) {
     const user = await prisma.user.findUnique({
-      where: { email },
+      where: { email: email.trim().toLowerCase() },
       include: {
         role: true,
       },
@@ -50,7 +50,7 @@ export class AuthService {
     name: string;
     email: string;
     password: string;
-    roleId: string;
+    roleName: 'ADMIN' | 'RECEPTIONIST';
   }) {
     const existingUser = await prisma.user.findUnique({
       where: { email: userData.email },
@@ -61,7 +61,7 @@ export class AuthService {
     }
 
     const role = await prisma.role.findUnique({
-      where: { id: userData.roleId },
+      where: { name: userData.roleName },
     });
 
     if (!role) {
@@ -75,7 +75,7 @@ export class AuthService {
         name: userData.name,
         email: userData.email,
         password: hashedPassword,
-        roleId: userData.roleId,
+        roleId: role.id,
         active: true,
       },
       include: {
@@ -85,6 +85,16 @@ export class AuthService {
 
     const { password: _, ...userWithoutPassword } = user;
     return userWithoutPassword;
+  }
+
+  async listUsers() {
+    return prisma.user.findMany({
+      select: {
+        id: true, name: true, email: true, active: true, roleId: true,
+        role: { select: { id: true, name: true } }, createdAt: true,
+      },
+      orderBy: { createdAt: 'desc' },
+    });
   }
 
   async changePassword(userId: string, oldPassword: string, newPassword: string) {
