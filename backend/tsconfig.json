@@ -13,11 +13,6 @@
     "forceConsistentCasingInFileNames": true,
     "resolveJsonModule": true,
 
-    "baseUrl": ".",
-    "paths": {
-      "@prisma/client": ["./src/generated/prisma"]
-    },
-
     "types": ["node"]
   },
 

@@ -1,18 +1,18 @@
 import { NavLink, Outlet, useLocation } from 'react-router-dom';
-import { Activity, BadgeDollarSign, ClipboardList, Dumbbell, FileClock, LayoutDashboard, LogOut, Menu, Settings, Users, X } from 'lucide-react';
+import { Activity, BadgeDollarSign, ClipboardList, Dumbbell, FileClock, LayoutDashboard, LogOut, Menu, Settings, UserRoundCog, Users, X } from 'lucide-react';
 import { useState } from 'react';
 import { useAuth } from './AuthContext';
 
 const items = [
   { to: '/', label: 'Resumen', icon: LayoutDashboard }, { to: '/socios', label: 'Socios', icon: Users },
   { to: '/pagos', label: 'Pagos y cuotas', icon: BadgeDollarSign }, { to: '/finanzas', label: 'Finanzas', icon: Activity },
-  { to: '/planes', label: 'Planes', icon: ClipboardList }, { to: '/auditoria', label: 'Auditoría', icon: FileClock, admin: true },
+  { to: '/planes', label: 'Planes', icon: ClipboardList }, { to: '/usuarios', label: 'Usuarios', icon: UserRoundCog, admin: true }, { to: '/auditoria', label: 'Auditoría', icon: FileClock, admin: true },
   { to: '/perfil', label: 'Mi cuenta', icon: Settings },
 ];
 const titles: Record<string, [string, string]> = {
   '/': ['Panel general', 'Una vista clara del estado de Inmortal Club'], '/socios': ['Socios', 'Gestioná altas, datos y membresías'],
   '/pagos': ['Pagos y cuotas', 'Controlá cobranzas, vencimientos y renovaciones'], '/finanzas': ['Finanzas', 'Ingresos, egresos y balance del gimnasio'],
-  '/planes': ['Planes y beneficios', 'Configurá valores y revisá los descuentos'], '/auditoria': ['Auditoría', 'Historial de acciones del sistema'],
+  '/planes': ['Planes y beneficios', 'Configurá valores y revisá los descuentos'], '/usuarios': ['Usuarios', 'Administrá los accesos del equipo'], '/auditoria': ['Auditoría', 'Historial de acciones del sistema'],
   '/perfil': ['Mi cuenta', 'Seguridad y datos de acceso'],
 };
 

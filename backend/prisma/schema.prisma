@@ -1,6 +1,5 @@
 generator client {
   provider = "prisma-client-js"
-  output   = "../src/generated/prisma"
 }
 
 datasource db {
@@ -159,7 +158,7 @@ model Plan {
   name        String   @unique
   description String?
   price       Decimal
-  
+
   active      Boolean  @default(true)
   payments    Payment[]
 
@@ -188,7 +187,7 @@ model Payment {
 
   paymentMethod PaymentMethod
   status        PaymentStatus @default(PAID)
-  
+
   cancellationReason String?
 
   member Member @relation(fields: [memberId], references: [id])

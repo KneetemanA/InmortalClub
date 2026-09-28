@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
-import { ArrowDownRight, ArrowUpRight, Plus, Scale } from 'lucide-react';
+import { ArrowDownRight, ArrowUpRight, FolderPlus, Plus, Scale } from 'lucide-react';
+import { useAuth } from '../AuthContext';
 import { api, date, money, todayInput } from '../api';
 import type { Category, Movement } from '../types';
 import { Button, DateFilter, Empty, ErrorState, Field, Loading, Modal, ToastView } from '../components';
@@ -15,6 +16,8 @@ const periodNames: Record<Period, string> = { weekly: 'Semanal', monthly: 'Mensu
 const localISO = (value: string, end = false) => new Date(`${value}T${end ? '23:59:59.999' : '00:00:00'}`).toISOString();
 
 export default function Finances() {
+  const { user } = useAuth();
+  const isAdmin = user?.role.name === 'ADMIN';
   const [anchor, setAnchor] = useState(todayInput());
   const [startDate, setStartDate] = useState(() => { const now = new Date(); return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`; });
   const [endDate, setEndDate] = useState(todayInput());
@@ -25,6 +28,8 @@ export default function Finances() {
   const [movements, setMovements] = useState<Movement[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [modal, setModal] = useState<'INCOME' | 'EXPENSE' | null>(null);
+  const [categoryModal, setCategoryModal] = useState(false);
+  const [categoryError, setCategoryError] = useState('');
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
@@ -62,11 +67,11 @@ export default function Finances() {
     e.preventDefault(); if (!modal) return; setSaving(true);
     const form = new FormData(e.currentTarget);
     const movementDate = String(form.get('movementDate') || '');
-    const body = { 
-      categoryId: form.get('categoryId'), 
-      amount: Number(form.get('amount')), 
-      description: form.get('description'), 
-      movementDate: localISO(movementDate) 
+    const body = {
+      categoryId: form.get('categoryId'),
+      amount: Number(form.get('amount')),
+      description: form.get('description'),
+      movementDate: localISO(movementDate)
     };
     try {
       await api(`/financial/${modal === 'INCOME' ? 'income' : 'expense'}`, { method: 'POST', body: JSON.stringify(body) });
@@ -74,6 +79,24 @@ export default function Finances() {
       await load();
     } catch (e) { setToast({ type: 'error', message: e instanceof Error ? e.message : 'Error' }); }
     finally { setSaving(false); }
+  }
+
+  async function createCategory(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const form = new FormData(e.currentTarget);
+    setSaving(true);
+    setCategoryError('');
+    try {
+      const response = await api<Category>('/financial/categories', {
+        method: 'POST',
+        body: JSON.stringify({ name: String(form.get('name')).trim(), type: form.get('type') }),
+      });
+      setCategories(previous => [...previous, response.data].sort((a, b) => a.name.localeCompare(b.name)));
+      setCategoryModal(false);
+      setToast({ type: 'success', message: 'Categoría creada. Ya está disponible para registrar movimientos.' });
+    } catch (e) {
+      setCategoryError(e instanceof Error ? e.message : 'No se pudo crear la categoría');
+    } finally { setSaving(false); }
   }
 
   if (error) return <ErrorState message={error} retry={load} />;
@@ -94,7 +117,7 @@ export default function Finances() {
       </div>
 
       <div className="date-filter">
-        {period === 'custom' ? 
+        {period === 'custom' ?
         <>
           <DateFilter label="Desde" value={startDate} onChange={e => { if (e.target.value) { setStartDate(e.target.value); if (e.target.value > endDate) setEndDate(e.target.value); } }} />
           <DateFilter label="Hasta" value={endDate} min={startDate} onChange={e => { if (e.target.value) setEndDate(e.target.value); }} />
@@ -111,6 +134,7 @@ export default function Finances() {
       </div>
 
       <div className="button-pair">
+        {isAdmin && <Button variant="secondary" icon={<FolderPlus />} onClick={() => { setCategoryError(''); setCategoryModal(true); }}>Nueva categoría</Button>}
         <Button
           variant="secondary"
           icon={<ArrowDownRight />}
@@ -127,6 +151,8 @@ export default function Finances() {
         </Button>
       </div>
     </div>
+
+    {!categories.length && <div className="form-note"><FolderPlus /> No hay categorías de ingresos ni egresos. {isAdmin ? 'Creá una con “Nueva categoría” para poder registrar movimientos.' : 'Pedile a un administrador que cree las categorías para poder registrar movimientos.'}</div>}
 
     <p className="finance-period-label">{periodNames[period]} · {date(active.period.start)} al {date(active.period.end)}</p>
     <section className="stats-grid finance">
@@ -246,6 +272,7 @@ export default function Finances() {
                   </option>)}
               </select>
             </Field>
+            {!categories.some(c => c.type === modal) && <div className="form-note"><FolderPlus /> {isAdmin ? 'No hay categorías de este tipo. Cerrá este formulario y creá una con “Nueva categoría”.' : 'Un administrador debe crear una categoría de este tipo.'}</div>}
 
             <Field label="Monto *">
               <input name="amount"
@@ -287,5 +314,15 @@ export default function Finances() {
           </div>
         </form>
       </Modal>}
+    {categoryModal && <Modal title="Nueva categoría" subtitle="Organizá los ingresos extra y los egresos del gimnasio." onClose={() => !saving && setCategoryModal(false)}>
+      <form onSubmit={createCategory}>
+        <div className="form-stack">
+          <Field label="Nombre *"><input name="name" minLength={2} maxLength={100} placeholder="Ej.: Alquiler, bebidas" required /></Field>
+          <Field label="Tipo *"><select name="type" defaultValue="EXPENSE" required><option value="INCOME">Ingreso</option><option value="EXPENSE">Egreso</option></select></Field>
+        </div>
+        {categoryError && <p className="form-error" role="alert">{categoryError}</p>}
+        <div className="modal-actions"><Button type="button" variant="ghost" disabled={saving} onClick={() => setCategoryModal(false)}>Cancelar</Button><Button disabled={saving}>{saving ? 'Creando…' : 'Crear categoría'}</Button></div>
+      </form>
+    </Modal>}
   </div>;
 }

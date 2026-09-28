@@ -2,10 +2,19 @@ import { Request, Response, NextFunction } from 'express';
 import { AuthService } from '../services/auth.service';
 import { AuthenticatedRequest } from '../middlewares/auth.middleware';
 import prisma from '../config/database';
+import { Prisma } from '@prisma/client';
+import { AuditService } from '../services/audit.service';
 
 const authService = new AuthService();
+const auditService = new AuditService();
 
 export class AuthController {
+  async listUsers(req: Request, res: Response, next: NextFunction) {
+    try {
+      res.json({ success: true, data: await authService.listUsers() });
+    } catch (error) { next(error); }
+  }
+
   // Login
   async login(req: Request, res: Response, next: NextFunction) {
     try {
@@ -26,23 +35,20 @@ export class AuthController {
         message: 'Login exitoso',
       });
     } catch (error) {
+      if (error instanceof Error && (error.message === 'Credenciales inválidas' || error.message === 'Usuario desactivado')) {
+        return res.status(401).json({ success: false, message: error.message });
+      }
       next(error);
     }
   }
 
   // Registrar usuario
-  async register(req: Request, res: Response, next: NextFunction) {
+  async register(req: AuthenticatedRequest, res: Response, next: NextFunction) {
     try {
-      const { name, email, password, roleId } = req.body;
-
-      if (!name || !email || !password || !roleId) {
-        return res.status(400).json({
-          success: false,
-          message: 'Todos los campos son requeridos',
-        });
-      }
-
-      const user = await authService.register({ name, email, password, roleId });
+      const { name, email, password, roleName } = req.body;
+      const user = await authService.register({ name, email, password, roleName });
+      await auditService.logAction({ userId: req.user!.id, action: 'CREATE', entity: 'USER', entityId: user.id,
+        newData: { name: user.name, email: user.email, roleName } });
 
       res.status(201).json({
         success: true,
@@ -50,6 +56,12 @@ export class AuthController {
         message: 'Usuario registrado exitosamente',
       });
     } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+        return res.status(409).json({ success: false, message: 'El email ya está registrado' });
+      }
+      if (error instanceof Error && error.message === 'El email ya está registrado') {
+        return res.status(409).json({ success: false, message: error.message });
+      }
       next(error);
     }
   }

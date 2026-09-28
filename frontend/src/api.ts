@@ -1,4 +1,4 @@
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+const API_URL = import.meta.env.VITE_API_URL || (import.meta.env.PROD ? '/api' : 'http://localhost:3000/api');
 
 type ApiResponse<T> = { success: boolean; data: T; message?: string; total?: number; pagination?: { total: number; page: number; limit: number; totalPages: number } };
 
