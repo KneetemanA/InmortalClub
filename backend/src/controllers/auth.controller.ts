@@ -15,6 +15,16 @@ export class AuthController {
     } catch (error) { next(error); }
   }
 
+  async updateUser(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+    try { res.json({success:true,data:await authService.updateUser(String(req.params.id),req.body,req.user!.id)}); }
+    catch(error) { next(error); }
+  }
+
+  async deleteUser(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+    try { res.json({success:true,data:await authService.deleteUser(String(req.params.id),req.user!.id)}); }
+    catch(error) { next(error); }
+  }
+
   // Login
   async login(req: Request, res: Response, next: NextFunction) {
     try {

@@ -104,3 +104,9 @@ Solo después de completar la prueba manual, guardar una copia de seguridad de l
 ## Importación del padrón
 
 La entrega de importación agrega una nueva migración y un comando para cargar Sep26 sin generar cobros. Seguí [IMPORTAR-SOCIOS.md](IMPORTAR-SOCIOS.md); el archivo JSON con datos personales se entrega por separado.
+
+## Gestión de usuarios
+
+En Usuarios, el administrador puede editar nombre, email, rol, estado y restablecer la contraseña (vacía conserva la actual). Puede eliminar cuentas sin operaciones, con confirmación. Las cuentas con pagos, movimientos o auditorías deben desactivarse: se conserva su historial y dejan de poder acceder. No puede eliminar/desactivar su cuenta ni quitarse el rol administrador, y debe quedar al menos un administrador activo. Las modificaciones y eliminaciones se auditan sin contraseñas ni hashes. No requiere migración nueva.
+
+Probar en desarrollo: editar recepcionista, cambiar su contraseña e iniciar sesión con la nueva, desactivarlo y verificar rechazo de acceso, reactivarlo; crear una cuenta sin operaciones y eliminarla; intentar borrar una cuenta con historial y comprobar el mensaje. Recepción no accede a estas operaciones.

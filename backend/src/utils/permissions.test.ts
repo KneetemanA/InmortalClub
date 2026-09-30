@@ -21,6 +21,8 @@ test('permisos HTTP: recepción opera socios/pagos; solo admin modifica o elimin
   t.after(() => {database.default=original});
   // Aunque el token diga ADMIN, se usa el rol vigente de la cuenta.
   t.mock.method(AuthService.prototype,'verifyToken',(token: string) => ({id:token,roleName:'ADMIN'}));
+  t.mock.method(AuthService.prototype,'updateUser',async () => ({} as any));
+  t.mock.method(AuthService.prototype,'deleteUser',async () => ({} as any));
   const deletion = t.mock.method(PaymentService.prototype,'deletePayment',async () => ({id:'deleted'}));
   const edit = t.mock.method(PaymentService.prototype,'updateExpiration',async () => ({} as any));
   t.mock.method(PaymentService.prototype,'createPayment',async () => ({} as any));
@@ -43,7 +45,7 @@ test('permisos HTTP: recepción opera socios/pagos; solo admin modifica o elimin
   for (const [method,path] of [
     ['DELETE',`/payments/${id}`],['PATCH',`/payments/${id}/expiration`],['PATCH',`/payments/${id}/cancel`],
     ['GET','/financial/summary'],['POST','/financial/income'],['GET','/dashboard'],['GET','/audit'],
-    ['GET','/auth/users'],['POST','/auth/register'],['POST','/plans'],['POST','/benefits'],
+    ['PATCH',`/auth/users/${id}`],['DELETE',`/auth/users/${id}`],['GET','/auth/users'],['POST','/auth/register'],['POST','/plans'],['POST','/benefits'],
   ]) {
     assert.equal((await request(method,path,'receptionist',{})).status,403,`${method} ${path}`);
   }
@@ -51,6 +53,8 @@ test('permisos HTTP: recepción opera socios/pagos; solo admin modifica o elimin
   assert.equal((await request('DELETE',`/payments/${id}`)).status,401);
   assert.equal((await request('DELETE',`/payments/${id}`,'admin')).status,200);
   assert.equal((await request('PATCH',`/payments/${id}/expiration`,'admin',{expirationDate:'2026-10-30'})).status,200);
+  assert.equal((await request('PATCH',`/auth/users/${id}`,'admin',{name:'Nuevo nombre'})).status,200);
+  assert.equal((await request('DELETE',`/auth/users/${id}`,'admin')).status,200);
   assert.equal(deletion.mock.calls.length,1); assert.equal(edit.mock.calls.length,1);
   assert.equal((await request('GET','/members','receptionist')).status,200);
   assert.equal((await request('GET','/payments','receptionist')).status,200);
