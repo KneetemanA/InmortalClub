@@ -8,7 +8,7 @@ const router = Router();
 const financialController = new FinancialController();
 
 // Todas las rutas requieren autenticación
-router.use(authMiddleware);
+router.use(authMiddleware, roleMiddleware(['ADMIN']));
 
 // Rutas de categorías
 router.get('/categories', financialController.getCategories.bind(financialController));

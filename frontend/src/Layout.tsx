@@ -4,10 +4,10 @@ import { useState } from 'react';
 import { useAuth } from './AuthContext';
 
 const items = [
-  { to: '/', label: 'Resumen', icon: LayoutDashboard }, { to: '/socios', label: 'Socios', icon: Users },
-  { to: '/pagos', label: 'Pagos y cuotas', icon: BadgeDollarSign }, { to: '/finanzas', label: 'Finanzas', icon: Activity },
-  { to: '/planes', label: 'Planes', icon: ClipboardList }, { to: '/usuarios', label: 'Usuarios', icon: UserRoundCog, admin: true }, { to: '/auditoria', label: 'Auditoría', icon: FileClock, admin: true },
-  { to: '/perfil', label: 'Mi cuenta', icon: Settings },
+  { to: '/', label: 'Resumen', icon: LayoutDashboard, admin: true }, { to: '/socios', label: 'Socios', icon: Users },
+  { to: '/pagos', label: 'Pagos y cuotas', icon: BadgeDollarSign }, { to: '/finanzas', label: 'Finanzas', icon: Activity, admin: true },
+  { to: '/planes', label: 'Planes', icon: ClipboardList, admin: true }, { to: '/usuarios', label: 'Usuarios', icon: UserRoundCog, admin: true }, { to: '/auditoria', label: 'Auditoría', icon: FileClock, admin: true },
+  { to: '/perfil', label: 'Mi cuenta', icon: Settings, admin: true },
 ];
 const titles: Record<string, [string, string]> = {
   '/': ['Panel general', 'Una vista clara del estado de Inmortal Club'], '/socios': ['Socios', 'Gestioná altas, datos y membresías'],

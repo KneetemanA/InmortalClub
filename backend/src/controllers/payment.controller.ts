@@ -6,6 +6,13 @@ import { ensureString, ensureQueryString } from '../utils/helpers';
 const paymentService = new PaymentService();
 
 export class PaymentController {
+  async deletePayment(req: Request, res: Response, next: NextFunction) {
+    try {
+      if (!req.user) return res.status(401).json({success:false,message:'Usuario no autenticado'});
+      const data = await paymentService.deletePayment(ensureString(req.params.id), req.user.id);
+      res.json({success:true,data,message:'Pago eliminado correctamente'});
+    } catch (error) { next(error); }
+  }
   async updateExpiration(req: Request, res: Response, next: NextFunction) {
     try {
       if (!req.user) return res.status(401).json({ success: false, message: 'Usuario no autenticado' });

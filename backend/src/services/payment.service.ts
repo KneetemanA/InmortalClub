@@ -1,12 +1,35 @@
 import prisma from '../config/database';
 import { argentinaDate, monthRange, PaymentInputError, splitPayment } from '../utils/payment';
 import { CreatePaymentDTO } from '../types';
-import { PaymentStatus, PaymentMethod } from '@prisma/client';
+import { PaymentStatus, PaymentMethod, Prisma } from '@prisma/client';
 import { AuditService } from './audit.service';
 
 const auditService = new AuditService();
+const paymentUserSelect = {
+    id:true, name:true, email:true, roleId:true, active:true, createdAt:true,
+    role:{select:{id:true,name:true}},
+} satisfies Prisma.UserSelect;
 
 export class PaymentService {
+    async deletePayment(paymentId: string, userId: string) {
+        return prisma.$transaction(async tx => {
+            const payment = await tx.payment.findUnique({where:{id:paymentId}});
+            if (!payment) throw new PaymentInputError('Pago no encontrado');
+            // La eliminación y su auditoría se confirman juntas.
+            await tx.auditLog.create({data:{
+                userId, action:'DELETE', entity:'PAYMENT', entityId:paymentId,
+                oldData:{memberId:payment.memberId,planId:payment.planId,userId:payment.userId,
+                    appliedBenefitId:payment.appliedBenefitId,cancellationReason:payment.cancellationReason,
+                    priceOriginal:Number(payment.priceOriginal),discountPercentage:Number(payment.discountPercentage),
+                    discountAmount:Number(payment.discountAmount),finalAmount:Number(payment.finalAmount),
+                    cashAmount:Number(payment.cashAmount),transferAmount:Number(payment.transferAmount),
+                    paymentMethod:payment.paymentMethod,status:payment.status,prorated:payment.prorated,
+                    paymentDate:payment.paymentDate.toISOString(),expirationDate:payment.expirationDate.toISOString()},
+            }});
+            await tx.payment.delete({where:{id:paymentId}});
+            return {id:paymentId};
+        });
+    }
     async updateExpiration(paymentId: string, expirationDate: Date, userId: string) {
         const existing = await prisma.payment.findUnique({ where: { id: paymentId } });
         if (!existing || existing.status !== 'PAID') throw new PaymentInputError('El pago no existe o está cancelado');
@@ -130,11 +153,7 @@ export class PaymentService {
                 },
                 plan: true,
                 appliedBenefit: true,
-                user: {
-                    include: {
-                        role: true,
-                    },
-                },
+                user: { select: paymentUserSelect },
             },
         });
 
@@ -197,11 +216,7 @@ export class PaymentService {
                 },
                 plan: true,
                 appliedBenefit: true,
-                user: {
-                    include: {
-                        role: true,
-                    },
-                },
+                user: { select: paymentUserSelect },
             },
             orderBy: {
                 paymentDate: 'desc',
@@ -218,11 +233,7 @@ export class PaymentService {
             include: {
                 plan: true,
                 appliedBenefit: true,
-                user: {
-                    include: {
-                        role: true,
-                    },
-                },
+                user: { select: paymentUserSelect },
             },
             orderBy: {
                 paymentDate: 'desc',
@@ -515,11 +526,7 @@ export class PaymentService {
             include: {
                 member: true,
                 plan: true,
-                user: {
-                    include: {
-                        role: true,
-                    },
-                },
+                user: { select: paymentUserSelect },
             },
         });
 

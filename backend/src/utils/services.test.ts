@@ -13,7 +13,8 @@ function mockDatabase(t: TestContext) {
   const db = {
     user: {findUnique:stub,create:stub}, role:{upsert:stub},
     plan:{findUnique:stub}, benefit:{findUnique:stub},
-    member:{findUnique:stub,create:stub}, payment:{findFirst:stub,findUnique:stub,create:stub,update:stub},
+    member:{findUnique:stub,create:stub}, payment:{findFirst:stub,findUnique:stub,create:stub,update:stub,delete:stub},
+    auditLog:{create:stub}, $transaction:stub,
   };
   module.default = db;
   t.after(() => { module.default = original; });
@@ -79,4 +80,31 @@ test('editar vencimiento registra auditoría y rechaza pagos cancelados', async 
   status = 'CANCELLED';
   await assert.rejects(service.updateExpiration('payment',new Date('2026-09-30'),'admin'));
   assert.equal(update.mock.calls.length,1);
+});
+
+
+test('eliminación: auditoría antes de borrar; no borra si falta el pago o falla la auditoría', async t => {
+  const db = mockDatabase(t);
+  t.mock.method(db, '$transaction', async (callback: any) => callback(db));
+  const payment = {id:'payment',memberId:'member',planId:'plan',userId:'cashier',priceOriginal:55000,
+    discountPercentage:0,discountAmount:0,finalAmount:55000,cashAmount:20000,transferAmount:35000,
+    paymentMethod:'MIXED',status:'PAID',prorated:false,paymentDate:new Date('2026-09-30'),expirationDate:new Date('2026-10-30')};
+  let found = true; let auditFails = false;
+  t.mock.method(db.payment,'findUnique',async () => found ? payment : null);
+  const events: string[] = [];
+  const audit = t.mock.method(db.auditLog,'create',async (args: any) => {
+    events.push('audit'); if(auditFails) throw new Error('Auditoría no disponible'); return args.data;
+  });
+  const deletion = t.mock.method(db.payment,'delete',async () => { events.push('delete'); return payment; });
+  const service = new PaymentService();
+  assert.deepEqual(await service.deletePayment('payment','admin'), {id:'payment'});
+  assert.deepEqual(events, ['audit','delete']);
+  assert.equal(audit.mock.calls[0].arguments[0].data.action,'DELETE');
+  assert.equal(audit.mock.calls[0].arguments[0].data.userId,'admin');
+  assert.equal(audit.mock.calls[0].arguments[0].data.oldData.cashAmount,20000);
+  found = false;
+  await assert.rejects(service.deletePayment('missing','admin'));
+  found = true; auditFails = true;
+  await assert.rejects(service.deletePayment('payment','admin'), /Auditoría/);
+  assert.equal(deletion.mock.calls.length,1);
 });
