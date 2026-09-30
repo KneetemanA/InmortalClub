@@ -25,6 +25,7 @@ enum MemberBenefitRelation {
 enum PaymentMethod {
   CASH
   TRANSFER
+  MIXED
 }
 
 enum PaymentStatus {
@@ -181,6 +182,9 @@ model Payment {
   discountPercentage Decimal     @default(0)
   discountAmount     Decimal     @default(0)
   finalAmount        Decimal
+  cashAmount         Decimal @default(0)
+  transferAmount     Decimal @default(0)
+  prorated           Boolean @default(false)
 
   paymentDate DateTime    @default(now())
   expirationDate DateTime

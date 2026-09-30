@@ -1,4 +1,5 @@
 import prisma from '../config/database';
+import { argentinaDate, monthRange, PaymentInputError, splitPayment } from '../utils/payment';
 import { CreatePaymentDTO } from '../types';
 import { PaymentStatus, PaymentMethod } from '@prisma/client';
 import { AuditService } from './audit.service';
@@ -6,6 +7,26 @@ import { AuditService } from './audit.service';
 const auditService = new AuditService();
 
 export class PaymentService {
+    async updateExpiration(paymentId: string, expirationDate: Date, userId: string) {
+        const existing = await prisma.payment.findUnique({ where: { id: paymentId } });
+        if (!existing || existing.status !== 'PAID') throw new PaymentInputError('El pago no existe o está cancelado');
+        const updated = await prisma.payment.update({ where: { id: paymentId }, data: { expirationDate } });
+        await auditService.logAction({ userId, action: 'UPDATE', entity: 'PAYMENT', entityId: paymentId,
+            oldData: { expirationDate: existing.expirationDate }, newData: { expirationDate } });
+        return updated;
+    }
+    async getNotRenewed(month: string) {
+        const { start, end } = monthRange(month);
+        return prisma.member.findMany({
+            where: { status: 'ACTIVE', AND: [
+                { payments: { some: { status: 'PAID', paymentDate: { lt: start } } } },
+                { payments: { none: { status: 'PAID', paymentDate: { gte: start, lt: end } } } },
+            ] },
+            include: { benefits: { include: { benefit: true } }, payments: {
+                where: { status: 'PAID', paymentDate: { lt: end } }, orderBy: { paymentDate: 'desc' }, take: 1, include: { plan: true },
+            } }, orderBy: [{ lastName: 'asc' }, { firstName: 'asc' }],
+        });
+    }
     // Registrar nuevo pago
     async createPayment(data: CreatePaymentDTO) {
         // Verificar que el miembro existe
@@ -81,6 +102,7 @@ export class PaymentService {
             // Lo dejamos pasar pero registramos como pago anticipado
         }
 
+        const split = splitPayment(finalAmount, data.paymentMethod, data.cashAmount);
         // Crear el pago
         const payment = await prisma.payment.create({
             data: {
@@ -92,6 +114,7 @@ export class PaymentService {
                 discountPercentage: discountPercentage,
                 discountAmount: discountAmount,
                 finalAmount: finalAmount,
+                ...split,
                 paymentDate: new Date(),
                 expirationDate: data.expirationDate || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
                 paymentMethod: data.paymentMethod,
@@ -310,6 +333,7 @@ export class PaymentService {
                     include: { benefit: true },
                 },
                 payments: {
+                    where: { status: 'PAID' },
                     take: 1,
                     orderBy: {
                         paymentDate: 'desc',
@@ -371,14 +395,14 @@ export class PaymentService {
     // Obtener estadísticas de pagos
     async getPaymentStats() {
         const now = new Date();
-        const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-        const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+        const {year, month} = argentinaDate(now);
+        const {start: startOfMonth, end: endOfMonth} = monthRange(`${year}-${String(month).padStart(2, '0')}`);
 
         const monthlyPayments = await prisma.payment.findMany({
             where: {
                 paymentDate: {
                     gte: startOfMonth,
-                    lte: endOfMonth,
+                    lt: endOfMonth,
                 },
                 status: 'PAID',
             },
@@ -396,7 +420,7 @@ export class PaymentService {
             where: {
                 paymentDate: {
                     gte: startOfMonth,
-                    lte: endOfMonth,
+                    lt: endOfMonth,
                 },
                 status: 'PAID',
             },
@@ -433,7 +457,7 @@ export class PaymentService {
     }
 
     // Renovar plan (crear nuevo pago basado en el último)
-    async renewPlan(memberId: string, userId: string, paymentMethod: PaymentMethod) {
+    async renewPlan(memberId: string, userId: string, paymentMethod: PaymentMethod, cashAmount?: number, expirationDate?: Date) {
         const lastPayment = await this.getLastPayment(memberId);
 
         if (!lastPayment) {
@@ -456,7 +480,8 @@ export class PaymentService {
             userId,
             appliedBenefitId: lastPayment.appliedBenefitId || undefined,
             paymentMethod,
-            expirationDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+            cashAmount,
+            expirationDate: expirationDate || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
         });
 
         return newPayment;

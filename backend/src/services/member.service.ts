@@ -1,4 +1,5 @@
 import prisma from '../config/database';
+import { proratedMonth, splitPayment } from '../utils/payment';
 import { CreateMemberDTO, UpdateMemberDTO } from '../types';
 import { MemberStatus, PaymentMethod } from '@prisma/client';
 import { AuditService } from './audit.service';
@@ -46,6 +47,12 @@ export class MemberService {
       finalPrice = Number(plan.price) - discountAmount;
     }
 
+    const now = new Date();
+    const proportional = data.prorated ? proratedMonth(finalPrice, now) : undefined;
+    finalPrice = proportional?.amount ?? finalPrice;
+    const originalPrice = proportional ? proratedMonth(Number(plan.price), now).amount : Number(plan.price);
+    discountAmount = Math.round((originalPrice - finalPrice) * 100) / 100;
+    const split = splitPayment(finalPrice, data.paymentMethod, data.cashAmount);
     // Crear el miembro
     const member = await prisma.member.create({
       data: {
@@ -53,7 +60,7 @@ export class MemberService {
         lastName: data.lastName,
         dni: data.dni,
         phone: data.phone,
-        email: data.email,
+        email: data.email === '' ? null : data.email,
         birthDate: data.birthDate,
         notes: data.notes,
         status: MemberStatus.ACTIVE,
@@ -72,12 +79,14 @@ export class MemberService {
             planId: data.planId,
             userId: data.userId,
             appliedBenefitId: data.benefitId || null,
-            priceOriginal: plan.price,
+            priceOriginal: originalPrice,
             discountPercentage: discountPercentage,
             discountAmount: discountAmount,
             finalAmount: finalPrice,
-            paymentDate: new Date(),
-            expirationDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 días
+            ...split,
+            prorated: !!data.prorated,
+            paymentDate: now,
+            expirationDate: data.expirationDate || proportional?.expirationDate || new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000),
             paymentMethod: data.paymentMethod,
             status: 'PAID',
           },
@@ -190,8 +199,9 @@ export class MemberService {
       data: {
         firstName: data.firstName,
         lastName: data.lastName,
+        dni: data.dni,
         phone: data.phone,
-        email: data.email,
+        email: data.email === '' ? null : data.email,
         birthDate: data.birthDate,
         notes: data.notes,
         status: data.status,

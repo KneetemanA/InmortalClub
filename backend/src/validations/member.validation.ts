@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { PaymentMethod } from '@prisma/client';
+import { paymentFields } from './payment.validation';
 
 export const createMemberSchema = z.object({
   firstName: z.string().min(2, 'El nombre debe tener al menos 2 caracteres'),
@@ -7,19 +7,21 @@ export const createMemberSchema = z.object({
   dni: z.string().regex(/^\d{7,8}$/, 'DNI inválido (debe ser de 7 u 8 dígitos)'),
   phone: z.string().regex(/^[0-9+\-\s()]{8,15}$/, 'Teléfono inválido'),
   email: z.string().email('Email inválido').optional(),
-  birthDate: z.string().transform(str => new Date(str)).optional(),
+  birthDate: z.iso.date().transform(str => new Date(`${str}T12:00:00-03:00`)).optional(),
   notes: z.string().optional(),
   planId: z.string().uuid('ID de plan inválido'),
   benefitId: z.string().uuid('ID de beneficio inválido').optional(),
-  paymentMethod: z.enum([PaymentMethod.CASH, PaymentMethod.TRANSFER]),
+  ...paymentFields,
+  prorated: z.boolean().optional(),
 });
 
 export const updateMemberSchema = z.object({
+  dni: z.string().regex(/^\d{7,8}$/, 'DNI inválido').optional(),
   firstName: z.string().min(2, 'El nombre debe tener al menos 2 caracteres').optional(),
   lastName: z.string().min(2, 'El apellido debe tener al menos 2 caracteres').optional(),
   phone: z.string().regex(/^[0-9+\-\s()]{8,15}$/, 'Teléfono inválido').optional(),
-  email: z.string().email('Email inválido').optional(),
-  birthDate: z.string().transform(str => new Date(str)).optional(),
+  email: z.union([z.email(), z.literal('')]).optional(),
+  birthDate: z.union([z.iso.date().transform(str => new Date(`${str}T12:00:00-03:00`)), z.literal('').transform(() => null)]).optional(),
   notes: z.string().optional(),
   status: z.enum(['ACTIVE', 'INACTIVE']).optional(),
 });

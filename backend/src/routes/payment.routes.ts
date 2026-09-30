@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { PaymentController } from '../controllers/payment.controller';
 import { authMiddleware } from '../middlewares/auth.middleware';
 import { validate, validateIdParam } from '../middlewares/validate.middleware';
-import { createPaymentSchema, renewPlanSchema, cancelPaymentSchema } from '../validations/payment.validation';
+import { createPaymentSchema, renewPlanSchema, cancelPaymentSchema, updateExpirationSchema } from '../validations/payment.validation';
 
 const router = Router();
 const paymentController = new PaymentController();
@@ -20,6 +20,9 @@ router.get('/stats', paymentController.getPaymentStats.bind(paymentController));
 // Miembros con pagos vencidos y próximos a vencer
 router.get('/overdue', paymentController.getMembersWithOverduePayments.bind(paymentController));
 router.get('/upcoming', paymentController.getUpcomingExpirations.bind(paymentController));
+
+router.get('/not-renewed', paymentController.getNotRenewed.bind(paymentController));
+router.patch('/:id/expiration', validateIdParam('id'), validate(updateExpirationSchema), paymentController.updateExpiration.bind(paymentController));
 
 // Rutas con ID
 router.get('/:id/member', validateIdParam('id'), paymentController.getMemberPayments.bind(paymentController));

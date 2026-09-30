@@ -9,7 +9,8 @@
     "start": "node dist/src/app.js",
     "seed": "tsx prisma/seed.ts",
     "admin:bootstrap": "tsx prisma/bootstrap-admin.ts",
-    "seed:manual": "ts-node prisma/seed.ts"
+    "seed:manual": "ts-node prisma/seed.ts",
+    "test": "npm run build && node --test dist/src/utils/*.test.js"
   },
   "prisma": {
     "seed": "ts-node prisma/seed.ts"

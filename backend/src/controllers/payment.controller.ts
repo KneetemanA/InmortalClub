@@ -1,10 +1,25 @@
 import { Request, Response, NextFunction } from 'express';
+import { argentinaDate } from '../utils/payment';
 import { PaymentService } from '../services/payment.service';
 import { ensureString, ensureQueryString } from '../utils/helpers';
 
 const paymentService = new PaymentService();
 
 export class PaymentController {
+  async updateExpiration(req: Request, res: Response, next: NextFunction) {
+    try {
+      if (!req.user) return res.status(401).json({ success: false, message: 'Usuario no autenticado' });
+      const data = await paymentService.updateExpiration(ensureString(req.params.id), req.body.expirationDate, req.user.id);
+      res.json({ success: true, data });
+    } catch (error) { next(error); }
+  }
+  async getNotRenewed(req: Request, res: Response, next: NextFunction) {
+    try {
+      const {year, month} = argentinaDate();
+      const data = await paymentService.getNotRenewed(ensureQueryString(req.query.month) || `${year}-${String(month).padStart(2, '0')}`);
+      res.json({ success: true, data, total: data.length });
+    } catch (error) { next(error); }
+  }
   // Registrar nuevo pago
   async createPayment(req: Request, res: Response, next: NextFunction) {
     try {
@@ -144,7 +159,7 @@ export class PaymentController {
         });
       }
 
-      const { paymentMethod } = req.body;
+      const { paymentMethod, cashAmount, expirationDate } = req.body;
 
       if (!paymentMethod) {
         return res.status(400).json({
@@ -153,7 +168,7 @@ export class PaymentController {
         });
       }
 
-      const payment = await paymentService.renewPlan(id, userId, paymentMethod);
+      const payment = await paymentService.renewPlan(id, userId, paymentMethod, cashAmount, expirationDate);
 
       res.json({
         success: true,

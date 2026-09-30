@@ -46,17 +46,17 @@ async function main() {
     {
       name: "2 veces por semana",
       description: "Plan de entrenamiento dos veces por semana",
-      price: parseFloat(process.env.PLAN_2VECES_PRICE || "0"),
+      price: parseFloat(process.env.PLAN_2VECES_PRICE || "49000"),
     },
     {
       name: "3 veces por semana",
       description: "Plan de entrenamiento tres veces por semana",
-      price: parseFloat(process.env.PLAN_3VECES_PRICE || "0"),
+      price: parseFloat(process.env.PLAN_3VECES_PRICE || "50000"),
     },
     {
       name: "Full Pass",
       description: "Acceso completo al gimnasio",
-      price: parseFloat(process.env.PLAN_FULL_PRICE || "0"),
+      price: parseFloat(process.env.PLAN_FULL_PRICE || "55000"),
     },
   ];
 
@@ -155,8 +155,9 @@ async function main() {
 main()
   .catch((error) => {
     console.error("❌ Error ejecutando seed:", error);
-    process.exit(1);
+    process.exitCode = 1;
   })
   .finally(async () => {
     await prisma.$disconnect();
+    await pool.end();
   });

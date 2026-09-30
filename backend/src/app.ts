@@ -81,9 +81,11 @@ app.use((req: Request, res: Response) => {
 // Middleware de errores
 app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
   console.error('Error:', err.stack);
-  res.status(500).json({
+  const code = (err as Error & { code?: string; statusCode?: number }).code;
+  const status = code === 'P2002' ? 409 : (err as Error & { statusCode?: number }).statusCode || 500;
+  res.status(status).json({
     success: false,
-    message: err.message || 'Error interno del servidor',
+    message: code === 'P2002' ? 'Ya existe un registro con esos datos (DNI o email).' : err.message || 'Error interno del servidor',
   });
 });
 

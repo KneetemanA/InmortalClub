@@ -69,7 +69,7 @@ const options = {
             birthDate: { type: 'string', format: 'date', example: '1990-01-01' },
             planId: { type: 'string' },
             benefitId: { type: 'string' },
-            paymentMethod: { type: 'string', enum: ['CASH', 'TRANSFER'] },
+            paymentMethod: { type: 'string', enum: ['CASH', 'TRANSFER', 'MIXED'] },
           },
           required: ['firstName', 'lastName', 'dni', 'phone', 'planId', 'paymentMethod'],
         },
@@ -98,7 +98,7 @@ const options = {
           properties: {
             memberId: { type: 'string' },
             planId: { type: 'string' },
-            paymentMethod: { type: 'string', enum: ['CASH', 'TRANSFER'] },
+            paymentMethod: { type: 'string', enum: ['CASH', 'TRANSFER', 'MIXED'] },
             appliedBenefitId: { type: 'string' },
           },
           required: ['memberId', 'planId', 'paymentMethod'],

@@ -17,6 +17,7 @@ async function main() {
   const pool = new Pool({ connectionString: databaseUrl });
   const prisma = new PrismaClient({ adapter: new PrismaPg(pool) });
   try {
+    await prisma.role.upsert({ where: { name: 'RECEPTIONIST' }, update: {}, create: { name: 'RECEPTIONIST' } });
     const existing = await prisma.user.findUnique({ where: { email }, select: { id: true } });
     if (existing) {
       console.log(`La cuenta ${email} ya existe. No se modificó su contraseña.`);

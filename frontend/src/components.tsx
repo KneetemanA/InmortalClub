@@ -1,4 +1,5 @@
 import { useEffect, useId, useRef, type ChangeEventHandler, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import { AlertTriangle, CalendarDays, CheckCircle2, X, LoaderCircle, Search } from 'lucide-react';
 
 export function Button({ children, variant = 'primary', icon, ...props }: React.ButtonHTMLAttributes<HTMLButtonElement> & { variant?: 'primary' | 'secondary' | 'ghost' | 'danger'; icon?: ReactNode }) {
@@ -12,12 +13,12 @@ export function Modal({ title, subtitle, children, onClose, wide = false }: { ti
     document.addEventListener('keydown', close); document.body.style.overflow = 'hidden';
     return () => { document.removeEventListener('keydown', close); document.body.style.overflow = ''; };
   }, [onClose]);
-  return <div className="modal-backdrop" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
-    <div className={`modal ${wide ? 'modal-wide' : ''}`} ref={ref}>
+  return createPortal(<div className="modal-backdrop" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
+    <div className={`modal ${wide ? 'modal-wide' : ''}`} ref={ref} role="dialog" aria-modal="true" aria-label={title}>
       <header><div><h2>{title}</h2>{subtitle && <p>{subtitle}</p>}</div><button className="icon-btn" onClick={onClose} aria-label="Cerrar"><X /></button></header>
       {children}
     </div>
-  </div>;
+  </div>, document.body);
 }
 
 export function Field({ label, children, hint }: { label: string; children: ReactNode; hint?: string }) {

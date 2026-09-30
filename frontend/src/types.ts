@@ -6,7 +6,7 @@ export type MemberBenefit = { id: string; active: boolean; benefit: Benefit };
 export type Payment = {
   id: string; memberId: string; planId: string; priceOriginal: string | number;
   discountPercentage: string | number; discountAmount: string | number; finalAmount: string | number;
-  paymentDate: string; expirationDate: string; paymentMethod: 'CASH' | 'TRANSFER'; status: 'PAID' | 'CANCELLED';
+  paymentDate: string; expirationDate: string; paymentMethod: 'CASH' | 'TRANSFER' | 'MIXED'; cashAmount: string | number; transferAmount: string | number; prorated?: boolean; status: 'PAID' | 'CANCELLED';
   cancellationReason?: string; plan: Plan; member?: Member; appliedBenefit?: Benefit | null; user?: User; daysRemaining?: number;
 };
 export type Member = {

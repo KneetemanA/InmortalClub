@@ -60,13 +60,9 @@ export class AuthService {
       throw new Error('El email ya está registrado');
     }
 
-    const role = await prisma.role.findUnique({
-      where: { name: userData.roleName },
+    const role = await prisma.role.upsert({
+      where: { name: userData.roleName }, update: {}, create: { name: userData.roleName },
     });
-
-    if (!role) {
-      throw new Error('Rol no encontrado');
-    }
 
     const hashedPassword = await bcrypt.hash(userData.password, 10);
 

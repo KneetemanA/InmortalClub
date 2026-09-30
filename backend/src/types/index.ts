@@ -11,15 +11,19 @@ export interface CreateMemberDTO {
   planId: string;
   benefitId?: string;
   paymentMethod: PaymentMethod;
+  cashAmount?: number;
   userId: string;
+  prorated?: boolean;
+  expirationDate?: Date;
 }
 
 export interface UpdateMemberDTO {
+  dni?: string;
   firstName?: string;
   lastName?: string;
   phone?: string;
   email?: string;
-  birthDate?: Date;
+  birthDate?: Date | null;
   notes?: string;
   status?: MemberStatus;
 }
@@ -30,7 +34,8 @@ export interface CreatePaymentDTO {
   userId: string;
   appliedBenefitId?: string;
   paymentMethod: PaymentMethod;
-  expirationDate: Date;
+  cashAmount?: number;
+  expirationDate?: Date;
 }
 
 export interface PaymentFiltersDTO {
