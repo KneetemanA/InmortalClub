@@ -100,3 +100,7 @@ git push -u origin developer-inmortalclub
 ```
 
 Solo después de completar la prueba manual, guardar una copia de seguridad de la base operativa y aprobar la versión, integrar la rama en `production`. Render aplicará la nueva migración al desplegar mediante su comando de arranque existente. Esta versión no borra datos; agrega columnas y el método combinado. No ejecutar `migrate reset` ni `seed` sobre la base operativa.
+
+## Importación del padrón
+
+La entrega de importación agrega una nueva migración y un comando para cargar Sep26 sin generar cobros. Seguí [IMPORTAR-SOCIOS.md](IMPORTAR-SOCIOS.md); el archivo JSON con datos personales se entrega por separado.

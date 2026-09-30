@@ -16,10 +16,12 @@ export const createMemberSchema = z.object({
 });
 
 export const updateMemberSchema = z.object({
-  dni: z.string().regex(/^\d{7,8}$/, 'DNI inválido').optional(),
+  dni: z.union([z.string().regex(/^\d{7,8}$/, 'DNI inválido'),z.literal('').transform(()=>null)]).optional(),
+  currentPlanId:z.union([z.uuid(),z.literal('').transform(()=>null)]).optional(),
+  benefitId:z.union([z.uuid(),z.literal('').transform(()=>null)]).optional(),
   firstName: z.string().min(2, 'El nombre debe tener al menos 2 caracteres').optional(),
-  lastName: z.string().min(2, 'El apellido debe tener al menos 2 caracteres').optional(),
-  phone: z.string().regex(/^[0-9+\-\s()]{8,15}$/, 'Teléfono inválido').optional(),
+  lastName: z.union([z.string().min(2),z.literal('')]).optional(),
+  phone: z.union([z.string().regex(/^[0-9+\-\s()]{8,15}$/, 'Teléfono inválido'),z.literal('')]).optional(),
   email: z.union([z.email(), z.literal('')]).optional(),
   birthDate: z.union([z.iso.date().transform(str => new Date(`${str}T12:00:00-03:00`)), z.literal('').transform(() => null)]).optional(),
   notes: z.string().optional(),

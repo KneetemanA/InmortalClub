@@ -18,7 +18,9 @@ export interface CreateMemberDTO {
 }
 
 export interface UpdateMemberDTO {
-  dni?: string;
+  dni?: string | null;
+  currentPlanId?: string | null;
+  benefitId?: string | null;
   firstName?: string;
   lastName?: string;
   phone?: string;
@@ -29,6 +31,8 @@ export interface UpdateMemberDTO {
 }
 
 export interface CreatePaymentDTO {
+  amount?: number;
+  paymentDate?: Date;
   memberId: string;
   planId: string;
   userId: string;

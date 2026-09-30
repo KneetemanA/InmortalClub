@@ -85,7 +85,7 @@ model Member {
 
   firstName        String
   lastName         String
-  dni              String       @unique
+  dni              String?      @unique
   phone            String
   email            String?
   birthDate        DateTime?
@@ -95,6 +95,11 @@ model Member {
 
   token            String?      @unique
   notes            String?
+  importKey        String? @unique
+  importedExpirationDate DateTime?
+  importedData     Json?
+  currentPlanId    String?
+  currentPlan      Plan? @relation("MemberCurrentPlan", fields: [currentPlanId], references: [id])
 
   benefits         MemberBenefit[]
   payments         Payment[]
@@ -162,6 +167,7 @@ model Plan {
 
   active      Boolean  @default(true)
   payments    Payment[]
+  currentMembers Member[] @relation("MemberCurrentPlan")
 
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -185,6 +191,7 @@ model Payment {
   cashAmount         Decimal @default(0)
   transferAmount     Decimal @default(0)
   prorated           Boolean @default(false)
+  adjustmentAmount   Decimal @default(0)
 
   paymentDate DateTime    @default(now())
   expirationDate DateTime

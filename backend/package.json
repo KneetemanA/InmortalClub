@@ -10,7 +10,8 @@
     "seed": "tsx prisma/seed.ts",
     "admin:bootstrap": "tsx prisma/bootstrap-admin.ts",
     "seed:manual": "ts-node prisma/seed.ts",
-    "test": "npm run build && node --test dist/src/utils/*.test.js"
+    "test": "npm run build && node --test dist/src/utils/*.test.js",
+    "members:import": "tsx prisma/import-members.ts"
   },
   "prisma": {
     "seed": "ts-node prisma/seed.ts"

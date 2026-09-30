@@ -31,6 +31,7 @@ export class DashboardService {
             // Nuevos miembros del mes
             prisma.member.count({
                 where: {
+                    importKey:null,
                     enrollmentDate: {
                         gte: startOfMonth,
                         lte: endOfMonth,
@@ -178,6 +179,8 @@ export class DashboardService {
                 lastName: true,
                 phone: true,
                 email: true,
+                importedExpirationDate:true,
+                currentPlan:{select:{name:true}},
             },
         });
 
@@ -199,7 +202,7 @@ export class DashboardService {
 
         // Filtrar miembros que no tienen pagos activos
         const overdueMembers = activeMembers.filter(
-            m => !activeMemberIds.includes(m.id)
+            m => !activeMemberIds.includes(m.id) && !(m.importedExpirationDate && m.importedExpirationDate > now)
         );
 
         // Obtener el último pago de cada miembro vencido
@@ -223,14 +226,15 @@ export class DashboardService {
                     },
                 });
 
-                const daysOverdue = lastPayment
-                    ? Math.ceil((now.getTime() - new Date(lastPayment.expirationDate).getTime()) / (1000 * 60 * 60 * 24))
+                const expirationDate=lastPayment?.expirationDate || member.importedExpirationDate;
+                const daysOverdue = expirationDate
+                    ? Math.ceil((now.getTime() - expirationDate.getTime()) / (1000 * 60 * 60 * 24))
                     : 0;
 
                 return {
                     ...member,
-                    lastPlan: lastPayment?.plan?.name || 'Sin plan',
-                    lastPaymentDate: lastPayment?.expirationDate || null,
+                    lastPlan: member.currentPlan?.name || lastPayment?.plan?.name || 'Plan pendiente',
+                    lastPaymentDate: expirationDate || null,
                     daysOverdue,
                 };
             })

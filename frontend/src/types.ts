@@ -7,10 +7,10 @@ export type Payment = {
   id: string; memberId: string; planId: string; priceOriginal: string | number;
   discountPercentage: string | number; discountAmount: string | number; finalAmount: string | number;
   paymentDate: string; expirationDate: string; paymentMethod: 'CASH' | 'TRANSFER' | 'MIXED'; cashAmount: string | number; transferAmount: string | number; prorated?: boolean; status: 'PAID' | 'CANCELLED';
-  cancellationReason?: string; plan: Plan; member?: Member; appliedBenefit?: Benefit | null; user?: User; daysRemaining?: number;
+  adjustmentAmount?: string | number; cancellationReason?: string; plan: Plan; member?: Member; appliedBenefit?: Benefit | null; user?: User; daysRemaining?: number;
 };
 export type Member = {
-  id: string; firstName: string; lastName: string; dni: string; phone: string; email?: string;
+  id: string; firstName: string; lastName: string; dni: string | null; phone: string; importKey?: string | null; importedExpirationDate?: string | null; currentPlanId?: string | null; currentPlan?: Plan | null; importedData?: {method:string;cashAmount:number;transferAmount:number;warnings:string[]}; email?: string;
   birthDate?: string; enrollmentDate: string; status: 'ACTIVE' | 'INACTIVE'; notes?: string;
   benefits: MemberBenefit[]; payments: Payment[];
 };

@@ -13,8 +13,8 @@ function mockDatabase(t: TestContext) {
   const db = {
     user: {findUnique:stub,create:stub}, role:{upsert:stub},
     plan:{findUnique:stub}, benefit:{findUnique:stub},
-    member:{findUnique:stub,create:stub}, payment:{findFirst:stub,findUnique:stub,create:stub,update:stub,delete:stub},
-    auditLog:{create:stub}, $transaction:stub,
+    member:{findUnique:stub,create:stub,update:stub}, payment:{findFirst:stub,findUnique:stub,create:stub,update:stub,delete:stub},
+    auditLog:{create:stub}, $transaction:stub, memberBenefit:{updateMany:stub,upsert:stub},
   };
   module.default = db;
   t.after(() => { module.default = original; });
@@ -56,6 +56,9 @@ test('renovación usa precio vigente, conserva el vencimiento elegido y registra
   t.mock.method(db.payment,'findFirst',async () => ({planId:'plan',appliedBenefitId:null}));
   t.mock.method(db.member,'findUnique',async () => ({id:'member',status:'ACTIVE'}));
   t.mock.method(db.plan,'findUnique',async () => ({id:'plan',name:'Full Pass',price:55000}));
+  t.mock.method(db,'$transaction',async (callback:any)=>callback(db));
+  t.mock.method(db.member,'update',async()=>({}));
+  t.mock.method(db.memberBenefit,'updateMany',async()=>({count:0}));
   t.mock.method(AuditService.prototype,'logAction',async (_args: any) => null);
   const create = t.mock.method(db.payment,'create',async (args: any) => ({id:'payment',...args.data}));
   const expirationDate = new Date('2026-11-01T02:59:59.999Z');
@@ -107,4 +110,23 @@ test('eliminación: auditoría antes de borrar; no borra si falta el pago o fall
   found = true; auditFails = true;
   await assert.rejects(service.deletePayment('payment','admin'), /Auditoría/);
   assert.equal(deletion.mock.calls.length,1);
+});
+
+test('pago histórico: conserva fecha e importe reales, ajuste y desglose sin aplicar tarifa actual al cobro', async t => {
+  const db=mockDatabase(t);
+  t.mock.method(db,'$transaction',async (callback:any)=>callback(db));
+  t.mock.method(db.member,'update',async()=>({}));
+  t.mock.method(db.memberBenefit,'updateMany',async()=>({count:0}));
+  t.mock.method(db.member,'findUnique',async()=>({id:'member',status:'ACTIVE'}));
+  t.mock.method(db.plan,'findUnique',async()=>({id:'plan',name:'Full Pass',price:55000}));
+  t.mock.method(db.payment,'findFirst',async()=>null);
+  t.mock.method(AuditService.prototype,'logAction',async (_args:any)=>null);
+  const create=t.mock.method(db.payment,'create',async (args:any)=>({id:'payment',...args.data}));
+  const paymentDate=new Date('2026-09-04T12:00:00-03:00');
+  const expirationDate=new Date('2026-10-05T02:59:59.999Z');
+  await new PaymentService().createPayment({memberId:'member',planId:'plan',userId:'admin',paymentMethod:PaymentMethod.MIXED,cashAmount:20000,amount:45000,paymentDate,expirationDate});
+  const data=create.mock.calls[0].arguments[0].data;
+  assert.equal(data.finalAmount,45000);assert.equal(data.priceOriginal,55000);assert.equal(data.adjustmentAmount,-10000);
+  assert.equal(data.cashAmount,20000);assert.equal(data.transferAmount,25000);
+  assert.equal(data.paymentDate,paymentDate);assert.equal(data.expirationDate,expirationDate);
 });

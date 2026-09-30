@@ -1,4 +1,5 @@
 import prisma from '../config/database';
+import {memberExpiration} from '../utils/member-coverage';
 import { argentinaDate, monthRange, PaymentInputError, splitPayment } from '../utils/payment';
 import { CreatePaymentDTO } from '../types';
 import { PaymentStatus, PaymentMethod, Prisma } from '@prisma/client';
@@ -21,7 +22,7 @@ export class PaymentService {
                 oldData:{memberId:payment.memberId,planId:payment.planId,userId:payment.userId,
                     appliedBenefitId:payment.appliedBenefitId,cancellationReason:payment.cancellationReason,
                     priceOriginal:Number(payment.priceOriginal),discountPercentage:Number(payment.discountPercentage),
-                    discountAmount:Number(payment.discountAmount),finalAmount:Number(payment.finalAmount),
+                    discountAmount:Number(payment.discountAmount),finalAmount:Number(payment.finalAmount),adjustmentAmount:Number(payment.adjustmentAmount),
                     cashAmount:Number(payment.cashAmount),transferAmount:Number(payment.transferAmount),
                     paymentMethod:payment.paymentMethod,status:payment.status,prorated:payment.prorated,
                     paymentDate:payment.paymentDate.toISOString(),expirationDate:payment.expirationDate.toISOString()},
@@ -92,7 +93,7 @@ export class PaymentService {
                 where: { id: data.appliedBenefitId },
             });
 
-            if (!benefit) {
+            if (!benefit || !benefit.active) {
                 throw new Error('Beneficio no encontrado');
             }
 
@@ -125,9 +126,15 @@ export class PaymentService {
             // Lo dejamos pasar pero registramos como pago anticipado
         }
 
+        const calculatedAmount=Math.round(finalAmount*100)/100;
+        finalAmount=data.amount === undefined ? calculatedAmount : Math.round(data.amount*100)/100;
+        if(!Number.isFinite(finalAmount) || finalAmount<=0 && data.amount!==undefined)throw new PaymentInputError('Importe cobrado inválido');
+        const adjustmentAmount=Math.round((finalAmount-calculatedAmount)*100)/100;
+        const paymentDate=data.paymentDate || new Date();
         const split = splitPayment(finalAmount, data.paymentMethod, data.cashAmount);
         // Crear el pago
-        const payment = await prisma.payment.create({
+        const payment = await prisma.$transaction(async tx => {
+          const payment = await tx.payment.create({
             data: {
                 memberId: data.memberId,
                 planId: data.planId,
@@ -138,8 +145,9 @@ export class PaymentService {
                 discountAmount: discountAmount,
                 finalAmount: finalAmount,
                 ...split,
-                paymentDate: new Date(),
-                expirationDate: data.expirationDate || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+                adjustmentAmount,
+                paymentDate,
+                expirationDate: data.expirationDate || new Date(paymentDate.getTime() + 30 * 24 * 60 * 60 * 1000),
                 paymentMethod: data.paymentMethod,
                 status: 'PAID',
             },
@@ -155,6 +163,12 @@ export class PaymentService {
                 appliedBenefit: true,
                 user: { select: paymentUserSelect },
             },
+          });
+          await tx.member.update({where:{id:data.memberId},data:{currentPlanId:data.planId}});
+          await tx.memberBenefit.updateMany({where:{memberId:data.memberId,active:true},data:{active:false}});
+          if(appliedBenefitId)await tx.memberBenefit.upsert({where:{memberId_benefitId:{memberId:data.memberId,benefitId:appliedBenefitId}},
+            create:{memberId:data.memberId,benefitId:appliedBenefitId,startDate:paymentDate,active:true},update:{active:true,endDate:null}});
+          return payment;
         });
 
         if (data.userId) {
@@ -168,6 +182,8 @@ export class PaymentService {
                     memberId: payment.memberId,
                     planId: payment.planId,
                     finalAmount: payment.finalAmount,
+                    adjustmentAmount: payment.adjustmentAmount,
+                    paymentDate: payment.paymentDate,
                     paymentMethod: payment.paymentMethod,
                     expirationDate: payment.expirationDate,
                 },
@@ -262,29 +278,23 @@ export class PaymentService {
     async checkMemberPaymentStatus(memberId: string) {
         const lastPayment = await this.getLastPayment(memberId);
 
-        if (!lastPayment) {
-            return {
-                isPaid: false,
-                status: 'NO_PAGOS',
-                message: 'El miembro no tiene pagos registrados',
-                lastPayment: null,
-            };
-        }
-
-        const now = new Date();
-        const isPaid = new Date(lastPayment.expirationDate) > now;
+        const member=await prisma.member.findUnique({where:{id:memberId}});
+        const expirationDate=memberExpiration({importedExpirationDate:member?.importedExpirationDate,payments:lastPayment?[lastPayment]:[]});
+        if(!expirationDate)return {isPaid:false,status:'NO_PAGOS',message:'Vencimiento pendiente',lastPayment:null};
+        const now=new Date();
+        const isPaid=expirationDate > now;
 
         // Calcular días de atraso si corresponde
         let daysOverdue = 0;
         if (!isPaid) {
-            const diffTime = now.getTime() - new Date(lastPayment.expirationDate).getTime();
+            const diffTime = now.getTime() - expirationDate.getTime();
             daysOverdue = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
         }
 
         // Calcular días restantes si está al día
         let daysRemaining = 0;
         if (isPaid) {
-            const diffTime = new Date(lastPayment.expirationDate).getTime() - now.getTime();
+            const diffTime = expirationDate.getTime() - now.getTime();
             daysRemaining = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
         }
 
@@ -294,6 +304,7 @@ export class PaymentService {
             daysRemaining: isPaid ? daysRemaining : 0,
             daysOverdue: !isPaid ? daysOverdue : 0,
             lastPayment,
+            expirationDate,
         };
     }
 
@@ -324,12 +335,13 @@ export class PaymentService {
             },
             select: {
                 id: true,
+                importedExpirationDate:true,
             },
         });
 
         // Filtrar los que no tienen pagos activos
         const overdueMemberIds = allActiveMembers
-            .filter(m => !activeMemberIds.includes(m.id))
+            .filter(m => !activeMemberIds.includes(m.id) && !(m.importedExpirationDate && m.importedExpirationDate > now))
             .map(m => m.id);
 
         // Obtener los miembros con sus detalles
@@ -340,6 +352,7 @@ export class PaymentService {
                 },
             },
             include: {
+                currentPlan:true,
                 benefits: {
                     include: { benefit: true },
                 },
@@ -468,7 +481,7 @@ export class PaymentService {
     }
 
     // Renovar plan (crear nuevo pago basado en el último)
-    async renewPlan(memberId: string, userId: string, paymentMethod: PaymentMethod, cashAmount?: number, expirationDate?: Date) {
+    async renewPlan(memberId: string, userId: string, paymentMethod: PaymentMethod, cashAmount?: number, expirationDate?: Date, paymentDate?: Date, amount?: number) {
         const lastPayment = await this.getLastPayment(memberId);
 
         if (!lastPayment) {
@@ -477,7 +490,7 @@ export class PaymentService {
 
         // Verificar que el miembro está activo
         const member = await prisma.member.findUnique({
-            where: { id: memberId },
+            where: { id: memberId },include:{benefits:{where:{active:true}}},
         });
 
         if (!member || member.status !== 'ACTIVE') {
@@ -487,12 +500,14 @@ export class PaymentService {
         // Usar el mismo plan y beneficios del último pago
         const newPayment = await this.createPayment({
             memberId,
-            planId: lastPayment.planId,
+            planId: member.currentPlanId || lastPayment.planId,
             userId,
-            appliedBenefitId: lastPayment.appliedBenefitId || undefined,
+            appliedBenefitId: member.currentPlanId ? member.benefits?.[0]?.benefitId : lastPayment.appliedBenefitId || undefined,
             paymentMethod,
             cashAmount,
-            expirationDate: expirationDate || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+            paymentDate,
+            amount,
+            expirationDate,
         });
 
         return newPayment;

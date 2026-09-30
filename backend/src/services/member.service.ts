@@ -1,5 +1,6 @@
 import prisma from '../config/database';
-import { proratedMonth, splitPayment } from '../utils/payment';
+import {memberExpiration} from '../utils/member-coverage';
+import { PaymentInputError, proratedMonth, splitPayment } from '../utils/payment';
 import { CreateMemberDTO, UpdateMemberDTO } from '../types';
 import { MemberStatus, PaymentMethod } from '@prisma/client';
 import { AuditService } from './audit.service';
@@ -63,6 +64,7 @@ export class MemberService {
         email: data.email === '' ? null : data.email,
         birthDate: data.birthDate,
         notes: data.notes,
+        currentPlanId: data.planId,
         status: MemberStatus.ACTIVE,
         // Si tiene beneficio, crear relación
         benefits: data.benefitId ? {
@@ -93,12 +95,14 @@ export class MemberService {
         },
       },
       include: {
+        currentPlan: true,
         benefits: {
           include: {
             benefit: true,
           },
         },
         payments: {
+          where:{status:'PAID'},
           take: 1,
           orderBy: {
             paymentDate: 'desc',
@@ -137,12 +141,14 @@ export class MemberService {
         status: MemberStatus.ACTIVE,
       },
       include: {
+        currentPlan: true,
         benefits: {
           include: {
             benefit: true,
           },
         },
         payments: {
+          where:{status:'PAID'},
           take: 1,
           orderBy: {
             paymentDate: 'desc',
@@ -163,6 +169,7 @@ export class MemberService {
     const member = await prisma.member.findUnique({
       where: { id },
       include: {
+        currentPlan: true,
         benefits: {
           include: {
             benefit: true,
@@ -189,23 +196,26 @@ export class MemberService {
 
   // Actualizar miembro
   async updateMember(id: string, data: UpdateMemberDTO, userId?: string) {
-    const existing = await prisma.member.findUnique({ where: { id } });
-    if (!existing) {
-      throw new Error('Miembro no encontrado');
-    }
-
-    const member = await prisma.member.update({
-      where: { id },
-      data: {
-        firstName: data.firstName,
-        lastName: data.lastName,
-        dni: data.dni,
-        phone: data.phone,
-        email: data.email === '' ? null : data.email,
-        birthDate: data.birthDate,
-        notes: data.notes,
-        status: data.status,
-      },
+    const {existing, member} = await prisma.$transaction(async tx => {
+      const existing = await tx.member.findUnique({where:{id},include:{benefits:{where:{active:true},include:{benefit:true}},payments:{where:{status:'PAID'},take:1,orderBy:{paymentDate:'desc'}}}});
+      if(!existing)throw new PaymentInputError('Miembro no encontrado');
+      if(!existing.importKey && (data.dni===null || data.phone==='' || data.lastName===''))throw new PaymentInputError('DNI, teléfono y apellido son obligatorios para un socio nuevo');
+      const planId=data.currentPlanId === undefined ? existing.currentPlanId || existing.payments[0]?.planId : data.currentPlanId;
+      const plan=planId ? await tx.plan.findUnique({where:{id:planId}}) : null;
+      if(planId && (!plan || !plan.active))throw new PaymentInputError('Plan no encontrado o inactivo');
+      const benefitId=data.benefitId === undefined ? existing.benefits[0]?.benefitId : data.benefitId;
+      const benefit=benefitId ? await tx.benefit.findUnique({where:{id:benefitId}}) : null;
+      if(benefitId && (!benefit || !benefit.active))throw new PaymentInputError('Beneficio no encontrado o inactivo');
+      if(benefit?.onlyFullPass && plan?.name!=='Full Pass')throw new PaymentInputError('Este beneficio solo aplica al plan Full Pass');
+      if(data.benefitId !== undefined) {
+        await tx.memberBenefit.updateMany({where:{memberId:id,active:true},data:{active:false}});
+        if(data.benefitId)await tx.memberBenefit.upsert({where:{memberId_benefitId:{memberId:id,benefitId:data.benefitId}},
+          create:{memberId:id,benefitId:data.benefitId,startDate:new Date(),active:true},update:{active:true,endDate:null}});
+      }
+      const member=await tx.member.update({where:{id},data:{firstName:data.firstName,lastName:data.lastName,dni:data.dni,
+        phone:data.phone,email:data.email === '' ? null : data.email,birthDate:data.birthDate,notes:data.notes,
+        status:data.status,currentPlanId:data.currentPlanId},include:{currentPlan:true,benefits:{include:{benefit:true}}}});
+      return {existing,member};
     });
 
     if (userId) {
@@ -280,12 +290,14 @@ export class MemberService {
         ],
       },
       include: {
+        currentPlan: true,
         benefits: {
           include: {
             benefit: true,
           },
         },
         payments: {
+          where:{status:'PAID'},
           take: 1,
           orderBy: {
             paymentDate: 'desc',
@@ -306,7 +318,9 @@ export class MemberService {
         status: MemberStatus.ACTIVE,
       },
       include: {
+        currentPlan:true,
         payments: {
+          where:{status:'PAID'},
           take: 1,
           orderBy: {
             paymentDate: 'desc',
@@ -320,7 +334,7 @@ export class MemberService {
 
     // Contar por plan
     const byPlan = activeMembers.reduce((acc: any, member) => {
-      const planName = member.payments[0]?.plan?.name || 'Sin plan';
+      const planName = member.currentPlan?.name || member.payments[0]?.plan?.name || 'Sin plan';
       acc[planName] = (acc[planName] || 0) + 1;
       return acc;
     }, {});
@@ -345,6 +359,7 @@ export class MemberService {
       where: { id: memberId },
       include: {
         payments: {
+          where:{status:'PAID'},
           take: 1,
           orderBy: {
             expirationDate: 'desc',
@@ -359,12 +374,14 @@ export class MemberService {
 
     const lastPayment = member.payments[0];
     const isActive = member.status === MemberStatus.ACTIVE;
-    const isPaid = lastPayment && new Date(lastPayment.expirationDate) > new Date();
+    const expirationDate = memberExpiration(member);
+    const isPaid = !!expirationDate && expirationDate > new Date();
 
     return {
       isActive,
       isPaid,
       lastPayment,
+      expirationDate,
       status: isActive && isPaid ? 'AL_DIA' : 'ATRASADO',
     };
   }
