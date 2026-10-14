@@ -1,0 +1,13 @@
+{
+  "name": "inmortalclub",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Sistema de socios de Inmortal Club",
+  "main": "app.cjs",
+  "engines": { "node": "22.x" },
+  "scripts": {
+    "build": "node scripts/build-hostinger.cjs",
+    "start": "node app.cjs"
+  },
+  "dependencies": { "express": "^5.2.1" }
+}
