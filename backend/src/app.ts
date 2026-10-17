@@ -21,6 +21,7 @@ import benefitRoutes from './routes/benefit.routes';
 import auditRoutes from './routes/audit.routes';
 
 const app: Express = express();
+app.set('trust proxy', 1);
 
 // Middlewares
 app.use(helmet());
@@ -82,6 +83,7 @@ app.use((req: Request, res: Response) => {
 app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
   console.error('Error:', err.stack);
   const code = (err as Error & { code?: string; statusCode?: number }).code;
+  console.error('Código del error:', code);
   const status = code === 'P2002' ? 409 : (err as Error & { statusCode?: number }).statusCode || 500;
   res.status(status).json({
     success: false,
