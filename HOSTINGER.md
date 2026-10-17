@@ -63,3 +63,9 @@ Conservar Render y un respaldo recuperable hasta que el cliente confirme que tod
 ## Validación de esta entrega
 
 Backend y frontend compilan; 25 pruebas automáticas pasan. En MariaDB 10.11 local se aplicó la migración y se importó una muestra sintética de las diez tablas; se verificaron todos sus campos, decimales, fechas UTC, JSON, notas extensas y búsqueda por mayúsculas/acentos. La simulación no escribe, repetir la importación se rechaza y un fallo de clave foránea revierte incluso las filas ya insertadas. Se comprobó el empaquetado Hostinger. Estas pruebas no usaron credenciales ni datos reales del cliente. Quedan pendientes el respaldo/exportación de Render, la importación en Hostinger y las pruebas funcionales con la copia real antes del corte.
+
+## Recuperar socios dados de baja
+
+La lista de socios solicita también los inactivos al backend. Sin texto en el buscador muestra los activos; al buscar nombre, DNI o email también aparecen las bajas, identificadas como Inactivo. La búsqueda ignora acentos y mayúsculas. Abrir el detalle y pulsar Reactivar socio conserva el ID, los datos y todo el historial; no genera pagos ni cambia vencimientos. Se conserva el botón de reactivación y se retira la acción Dar de baja del detalle. Los contadores distinguen activos/inactivos y calculan beneficios/vencimientos sobre activos.
+
+Verificado con las 25 pruebas existentes, compilación de ambos proyectos y pruebas manuales de búsqueda. Prueba con MariaDB 10.11 local: la lista normal excluye una baja, includeInactive la recupera, la activación guarda ACTIVE y auditoría sin cambiar ningún campo de los pagos existentes. No requiere otra migración ni repetir la importación.

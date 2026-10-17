@@ -135,11 +135,9 @@ export class MemberService {
   }
 
   // Obtener todos los miembros activos
-  async getActiveMembers() {
+  async getActiveMembers(includeInactive = false) {
     return prisma.member.findMany({
-      where: {
-        status: MemberStatus.ACTIVE,
-      },
+      where: includeInactive ? {} : { status: MemberStatus.ACTIVE },
       include: {
         currentPlan: true,
         benefits: {

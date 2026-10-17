@@ -34,7 +34,7 @@ export class MemberController {
   // Obtener todos los miembros activos
   async getActiveMembers(req: Request, res: Response, next: NextFunction) {
     try {
-      const members = await memberService.getActiveMembers();
+      const members = await memberService.getActiveMembers(req.query.includeInactive === 'true');
       res.json({
         success: true,
         data: members,
