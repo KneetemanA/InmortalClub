@@ -16,7 +16,7 @@ function run(command, args, cwd, env = process.env) {
 run('npm', ['ci', '--include=dev'], backend);
 // Prisma exige una URL para leer la configuración, aunque generate no conecta.
 run('npx', ['prisma', 'generate', '--config', 'prisma7.config.ts'], backend, {
-  ...process.env, DATABASE_URL: 'postgresql://build:build@localhost:5432/build',
+  ...process.env, DATABASE_URL: 'mysql://build:build@localhost:3306/build',
 });
 run('npm', ['run', 'build'], backend);
 run('npm', ['ci', '--include=dev'], frontend);

@@ -13,7 +13,7 @@ async function main() {
   const admin=await prisma.user.findUnique({where:{email},include:{role:true}});
   if(!admin?.active || admin.role.name!=='ADMIN')throw new Error('ADMIN_EMAIL debe corresponder a un administrador activo de esta base');
   const url=new URL(process.env.DATABASE_URL);
-  console.log(`Destino: ${url.hostname}:${url.port || '5432'}${url.pathname}`);
+  console.log(`Destino: ${url.hostname}:${url.port || '3306'}${url.pathname}`);
   const apply=args.includes('--apply');
   console.log(apply?'Importación: crear socios sin pagos':'Simulación: no se modificarán datos');
   console.log(JSON.stringify(await importMembers(input,admin.id,apply),null,2));

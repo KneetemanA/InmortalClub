@@ -8,3 +8,8 @@
 *.log
 
 *.tsbuildinfo
+
+# Respaldos con datos de clientes
+*.dump
+*.backup
+*.transfer.json

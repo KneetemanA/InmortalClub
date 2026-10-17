@@ -1,8 +1,6 @@
+import prisma, { closeDatabase } from '../src/config/database';
 import 'dotenv/config';
-import { PrismaClient } from '@prisma/client';
-import { PrismaPg } from '@prisma/adapter-pg';
 import bcrypt from 'bcryptjs';
-import { Pool } from 'pg';
 
 // Crea únicamente la cuenta inicial cuando el email aún no existe.
 // No modifica contraseñas ni otros datos de una cuenta existente.
@@ -14,8 +12,6 @@ async function main() {
     throw new Error('Configurá DATABASE_URL, ADMIN_EMAIL y ADMIN_PASSWORD (mínimo 6 caracteres) en backend/.env');
   }
 
-  const pool = new Pool({ connectionString: databaseUrl });
-  const prisma = new PrismaClient({ adapter: new PrismaPg(pool) });
   try {
     await prisma.role.upsert({ where: { name: 'RECEPTIONIST' }, update: {}, create: { name: 'RECEPTIONIST' } });
     const existing = await prisma.user.findUnique({ where: { email }, select: { id: true } });
@@ -33,8 +29,7 @@ async function main() {
     } });
     console.log(`Administrador ${email} creado. Ya podés iniciar sesión.`);
   } finally {
-    await prisma.$disconnect();
-    await pool.end();
+    await closeDatabase();
   }
 }
 

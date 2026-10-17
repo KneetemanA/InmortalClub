@@ -3,7 +3,7 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
+  provider = "mysql"
 }
 
 enum MemberStatus {
@@ -64,7 +64,7 @@ model Role {
 model User {
   id        String   @id @default(uuid())
   name      String
-  email     String   @unique
+  email     String @db.VarChar(254)   @unique
   password  String
   active    Boolean  @default(true)
 
@@ -83,18 +83,18 @@ model User {
 model Member {
   id               String       @id @default(uuid())
 
-  firstName        String
-  lastName         String
+  firstName        String @db.Text
+  lastName         String @db.Text
   dni              String?      @unique
-  phone            String
-  email            String?
+  phone            String @db.Text
+  email            String? @db.VarChar(254)
   birthDate        DateTime?
   enrollmentDate   DateTime     @default(now())
 
   status           MemberStatus @default(ACTIVE)
 
   token            String?      @unique
-  notes            String?
+  notes            String? @db.Text
   importKey        String? @unique
   importedExpirationDate DateTime?
   importedData     Json?
@@ -114,10 +114,10 @@ model Benefit {
   id                  String      @id @default(uuid())
 
   name                String
-  description         String?
+  description         String? @db.Text
   type                BenefitType
 
-  discountPercentage  Decimal
+  discountPercentage  Decimal @db.Decimal(65, 30)
   onlyFullPass        Boolean     @default(true)
   active              Boolean     @default(true)
 
@@ -143,7 +143,7 @@ model MemberBenefit {
 
   active      Boolean                 @default(true)
 
-  notes       String?
+  notes       String? @db.Text
 
   member      Member                  @relation(fields: [memberId], references: [id])
 
@@ -162,8 +162,8 @@ model Plan {
   id          String   @id @default(uuid())
 
   name        String   @unique
-  description String?
-  price       Decimal
+  description String? @db.Text
+  price       Decimal @db.Decimal(65, 30)
 
   active      Boolean  @default(true)
   payments    Payment[]
@@ -184,14 +184,14 @@ model Payment {
 
   appliedBenefitId String?
 
-  priceOriginal      Decimal
-  discountPercentage Decimal     @default(0)
-  discountAmount     Decimal     @default(0)
-  finalAmount        Decimal
-  cashAmount         Decimal @default(0)
-  transferAmount     Decimal @default(0)
+  priceOriginal      Decimal @db.Decimal(65, 30)
+  discountPercentage Decimal @db.Decimal(65, 30)     @default(0)
+  discountAmount     Decimal @db.Decimal(65, 30)     @default(0)
+  finalAmount        Decimal @db.Decimal(65, 30)
+  cashAmount         Decimal @db.Decimal(65, 30) @default(0)
+  transferAmount     Decimal @db.Decimal(65, 30) @default(0)
   prorated           Boolean @default(false)
-  adjustmentAmount   Decimal @default(0)
+  adjustmentAmount   Decimal @db.Decimal(65, 30) @default(0)
 
   paymentDate DateTime    @default(now())
   expirationDate DateTime
@@ -199,7 +199,7 @@ model Payment {
   paymentMethod PaymentMethod
   status        PaymentStatus @default(PAID)
 
-  cancellationReason String?
+  cancellationReason String? @db.Text
 
   member Member @relation(fields: [memberId], references: [id])
 
@@ -246,9 +246,9 @@ model FinancialMovement {
   categoryId  String
   userId      String
 
-  amount      Decimal
+  amount      Decimal @db.Decimal(65, 30)
 
-  description String?
+  description String? @db.Text
   movementDate DateTime             @default(now())
 
   category    FinancialCategory @relation(fields: [categoryId], references: [id])

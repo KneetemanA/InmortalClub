@@ -283,10 +283,10 @@ export class MemberService {
     return prisma.member.findMany({
       where: {
         OR: [
-          { firstName: { contains: query, mode: 'insensitive' } },
-          { lastName: { contains: query, mode: 'insensitive' } },
+          { firstName: { contains: query } },
+          { lastName: { contains: query } },
           { dni: { contains: query } },
-          { email: { contains: query, mode: 'insensitive' } },
+          { email: { contains: query } },
         ],
       },
       include: {

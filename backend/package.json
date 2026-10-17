@@ -11,7 +11,9 @@
     "admin:bootstrap": "tsx prisma/bootstrap-admin.ts",
     "seed:manual": "ts-node prisma/seed.ts",
     "test": "npm run build && node --test dist/src/utils/*.test.js",
-    "members:import": "tsx prisma/import-members.ts"
+    "members:import": "tsx prisma/import-members.ts",
+    "database:transfer": "tsx prisma/transfer-database.ts",
+    "db:deploy": "prisma migrate deploy --config prisma7.config.ts"
   },
   "prisma": {
     "seed": "ts-node prisma/seed.ts"
@@ -21,7 +23,7 @@
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
-    "@prisma/adapter-pg": "^7.10.0",
+    "@prisma/adapter-mariadb": "^7.10.0",
     "@prisma/client": "^7.10.0",
     "bcryptjs": "^3.0.3",
     "cors": "^2.8.6",
