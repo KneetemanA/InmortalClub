@@ -1,9 +1,10 @@
 const API_URL = import.meta.env.VITE_API_URL || (import.meta.env.PROD ? '/api' : 'http://localhost:3000/api');
 
-type ApiResponse<T> = { success: boolean; data: T; message?: string; total?: number; pagination?: { total: number; page: number; limit: number; totalPages: number } };
+import { readApiResponse, unconfirmedChange, type ApiResponse } from './api-response';
 
 export async function api<T>(path: string, options: RequestInit = {}): Promise<ApiResponse<T>> {
   const token = localStorage.getItem('inmortal_token');
+  const method = (options.method || 'GET').toUpperCase();
   const response = await fetch(`${API_URL}${path}`, {
     ...options,
     headers: {
@@ -11,8 +12,8 @@ export async function api<T>(path: string, options: RequestInit = {}): Promise<A
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...options.headers,
     },
-  });
-  const result = await response.json().catch(() => ({ success: false, message: 'Respuesta inválida del servidor' }));
+  }).catch(() => { throw new Error('No se pudo conectar con el servidor. Comprobá tu conexión.' + unconfirmedChange(method)); });
+  const result = await readApiResponse<T>(response, method);
   if (response.status === 401 && token) {
     localStorage.removeItem('inmortal_token');
     localStorage.removeItem('inmortal_user');
