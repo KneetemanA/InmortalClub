@@ -490,19 +490,21 @@ export class PaymentService {
 
         // Verificar que el miembro está activo
         const member = await prisma.member.findUnique({
-            where: { id: memberId },include:{benefits:{where:{active:true}}},
+            where: { id: memberId },include:{benefits:{where:{active:true,benefit:{active:true}}}},
         });
 
         if (!member || member.status !== 'ACTIVE') {
             throw new Error('El miembro no está activo');
         }
 
-        // Usar el mismo plan y beneficios del último pago
+        // Los beneficios desactivados no se aplican a nuevas renovaciones.
+        const candidateBenefitId = member.currentPlanId ? member.benefits?.[0]?.benefitId : lastPayment.appliedBenefitId;
+        const candidateBenefit = candidateBenefitId ? await prisma.benefit.findUnique({where:{id:candidateBenefitId}}) : null;
         const newPayment = await this.createPayment({
             memberId,
             planId: member.currentPlanId || lastPayment.planId,
             userId,
-            appliedBenefitId: member.currentPlanId ? member.benefits?.[0]?.benefitId : lastPayment.appliedBenefitId || undefined,
+            appliedBenefitId: candidateBenefit?.active ? candidateBenefit.id : undefined,
             paymentMethod,
             cashAmount,
             paymentDate,

@@ -11,6 +11,7 @@ import dashboardRoutes from '../routes/dashboard.routes';
 import auditRoutes from '../routes/audit.routes';
 import authRoutes from '../routes/auth.routes';
 import planRoutes from '../routes/plan.routes';
+import { BenefitService } from '../services/benefit.service';
 import benefitRoutes from '../routes/benefit.routes';
 
 // Requests HTTP reales; usuarios y persistencia simulados, sin base operativa.
@@ -23,6 +24,8 @@ test('permisos HTTP: recepción opera socios/pagos; solo admin modifica o elimin
   t.mock.method(AuthService.prototype,'verifyToken',(token: string) => ({id:token,roleName:'ADMIN'}));
   t.mock.method(AuthService.prototype,'updateUser',async () => ({} as any));
   t.mock.method(AuthService.prototype,'deleteUser',async () => ({} as any));
+  t.mock.method(BenefitService.prototype,'updateBenefit',async()=>({} as any));
+  t.mock.method(BenefitService.prototype,'deleteBenefit',async()=>({} as any));
   const deletion = t.mock.method(PaymentService.prototype,'deletePayment',async () => ({id:'deleted'}));
   const edit = t.mock.method(PaymentService.prototype,'updateExpiration',async () => ({} as any));
   t.mock.method(PaymentService.prototype,'createPayment',async () => ({} as any));
@@ -45,7 +48,7 @@ test('permisos HTTP: recepción opera socios/pagos; solo admin modifica o elimin
   for (const [method,path] of [
     ['DELETE',`/payments/${id}`],['PATCH',`/payments/${id}/expiration`],['PATCH',`/payments/${id}/cancel`],
     ['GET','/financial/summary'],['POST','/financial/income'],['GET','/dashboard'],['GET','/audit'],
-    ['PATCH',`/auth/users/${id}`],['DELETE',`/auth/users/${id}`],['GET','/auth/users'],['POST','/auth/register'],['POST','/plans'],['POST','/benefits'],
+    ['PATCH',`/auth/users/${id}`],['DELETE',`/auth/users/${id}`],['GET','/auth/users'],['POST','/auth/register'],['POST','/plans'],['POST','/benefits'],['PATCH',`/benefits/${id}`],['DELETE',`/benefits/${id}`],
   ]) {
     assert.equal((await request(method,path,'receptionist',{})).status,403,`${method} ${path}`);
   }
@@ -56,6 +59,8 @@ test('permisos HTTP: recepción opera socios/pagos; solo admin modifica o elimin
   assert.equal((await request('PATCH',`/auth/users/${id}`,'admin',{name:'Nuevo nombre'})).status,200);
   assert.equal((await request('DELETE',`/auth/users/${id}`,'admin')).status,200);
   assert.equal(deletion.mock.calls.length,1); assert.equal(edit.mock.calls.length,1);
+  assert.equal((await request('PATCH',`/benefits/${id}`,'admin',{active:false})).status,200);
+  assert.equal((await request('DELETE',`/benefits/${id}`,'admin')).status,200);
   assert.equal((await request('GET','/members','receptionist')).status,200);
   assert.equal((await request('GET','/payments','receptionist')).status,200);
   assert.equal((await request('POST','/payments','receptionist',{memberId:id,planId:id,paymentMethod:'CASH'})).status,201);

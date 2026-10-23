@@ -5,6 +5,12 @@ import { ensureString, ensureQueryBoolean } from '../utils/helpers';
 const benefitService = new BenefitService();
 
 export class BenefitController {
+  async updateBenefit(req: Request,res: Response,next: NextFunction) {
+    try { res.json({success:true,data:await benefitService.updateBenefit(ensureString(req.params.id),req.body,req.user!.id)}); } catch(error){next(error)}
+  }
+  async deleteBenefit(req: Request,res: Response,next: NextFunction) {
+    try { res.json({success:true,data:await benefitService.deleteBenefit(ensureString(req.params.id),req.user!.id)}); } catch(error){next(error)}
+  }
   async createBenefit(req: Request, res: Response, next: NextFunction) {
     try {
       const benefit = await benefitService.createBenefit(req.body, req.user!.id);

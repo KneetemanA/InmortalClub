@@ -201,7 +201,7 @@ export class MemberService {
       const planId=data.currentPlanId === undefined ? existing.currentPlanId || existing.payments[0]?.planId : data.currentPlanId;
       const plan=planId ? await tx.plan.findUnique({where:{id:planId}}) : null;
       if(planId && (!plan || !plan.active))throw new PaymentInputError('Plan no encontrado o inactivo');
-      const benefitId=data.benefitId === undefined ? existing.benefits[0]?.benefitId : data.benefitId;
+      const benefitId=data.benefitId === undefined ? existing.benefits.find(b=>b.benefit.active)?.benefitId : data.benefitId;
       const benefit=benefitId ? await tx.benefit.findUnique({where:{id:benefitId}}) : null;
       if(benefitId && (!benefit || !benefit.active))throw new PaymentInputError('Beneficio no encontrado o inactivo');
       if(benefit?.onlyFullPass && plan?.name!=='Full Pass')throw new PaymentInputError('Este beneficio solo aplica al plan Full Pass');

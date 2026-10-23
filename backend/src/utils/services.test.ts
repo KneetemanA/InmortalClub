@@ -130,3 +130,15 @@ test('pago histórico: conserva fecha e importe reales, ajuste y desglose sin ap
   assert.equal(data.cashAmount,20000);assert.equal(data.transferAmount,25000);
   assert.equal(data.paymentDate,paymentDate);assert.equal(data.expirationDate,expirationDate);
 });
+
+test('renovación: beneficio desactivado no se aplica; vuelve a seleccionarse si se reactiva',async t=>{
+  const db=mockDatabase(t);let active=false;
+  t.mock.method(db.payment,'findFirst',async()=>({planId:'plan',appliedBenefitId:'benefit'}));
+  t.mock.method(db.member,'findUnique',async()=>({id:'member',status:'ACTIVE'}));
+  t.mock.method(db.benefit,'findUnique',async()=>({id:'benefit',active}));
+  const create=t.mock.method(PaymentService.prototype,'createPayment',async(args:any)=>args);
+  const service=new PaymentService();await service.renewPlan('member','admin',PaymentMethod.CASH);
+  assert.equal(create.mock.calls[0].arguments[0].appliedBenefitId,undefined);
+  active=true;await service.renewPlan('member','admin',PaymentMethod.CASH);
+  assert.equal(create.mock.calls[1].arguments[0].appliedBenefitId,'benefit');
+});
