@@ -8,7 +8,7 @@ Respaldar la base actual de Render (pg_dump de PostgreSQL 18, formato custom) y 
 
 ## 2. Base vacía en Hostinger
 
-hPanel → Sitios web → Administrar → Bases de datos → Administración. Crear base MySQL y usuario con contraseña, sin tablas ni seed. Anotar los nombres completos, incluido el prefijo de cuenta. Para trabajar desde la PC, habilitar acceso remoto solo para su IP y usar el hostname remoto indicado por Hostinger. En el proceso Node alojado en Hostinger usar el host que indique el panel (normalmente localhost). No reutilizar una base de otro sitio.
+hPanel → Sitios web → Administrar → Bases de datos → Administración. Crear base MySQL y usuario con contraseña, sin tablas ni seed. Anotar los nombres completos, incluido el prefijo de cuenta. Para trabajar desde la PC, habilitar acceso remoto solo para su IP y usar el hostname remoto indicado por Hostinger. En el proceso Node alojado en Hostinger usar el host que indique el panel (127.0.0.1 para Node.js). No reutilizar una base de otro sitio.
 
 ## 3. Preparar la rama en la PC
 
@@ -54,7 +54,7 @@ Arrancar backend y frontend en desarrollo contra la copia MySQL. Probar login ad
 
 Acordar una pausa de carga con el club: nadie debe agregar pagos o socios en Render durante el corte. Exportar nuevamente a otro archivo y migrar a OTRA base MySQL vacía (la base de prueba contiene cambios de prueba y el importador la rechazará). Verificar todos los registros. Si falla, Render sigue siendo la fuente y se retoma su uso; al reintentar se necesita otro snapshot final después de detener las escrituras.
 
-Subir la rama de migración y seleccionarla en Hostinger. Configuración: Express, Node 22.x, raíz ./, build npm run build, salida dist, entrada app.cjs, inicio npm start. Variables: NODE_ENV=production, PORT=3000, DATABASE_URL de MySQL en Hostinger, JWT_SECRET seguro y JWT_EXPIRES_IN=7d. No cargar SOURCE_DATABASE_URL en Hostinger. El build solo compila y empaqueta, no migra ni modifica bases.
+Subir la rama de migración y seleccionarla en Hostinger. Configuración: Express, Node 22.x, raíz ./, build npm run build, salida dist, entrada app.cjs, inicio npm start. Variables: NODE_ENV=production, PORT=3000, DATABASE_URL de MySQL en Hostinger (host 127.0.0.1), JWT_SECRET seguro y JWT_EXPIRES_IN=7d. No cargar SOURCE_DATABASE_URL en Hostinger. El build solo compila y empaqueta, no migra ni modifica bases.
 
 Probar la URL de Hostinger con los usuarios existentes y verificar socios, historial de pagos, fechas e importes antes de reabrir la carga. El health check solo comprueba el proceso, no la conexión a la base. Anunciar una única URL al club para evitar escrituras divididas.
 
@@ -85,3 +85,10 @@ En Planes → Beneficios, administración puede editar nombre, descripción, por
 Los beneficios desactivados quedan fuera de la selección y de nuevas renovaciones. Editar un socio con un beneficio globalmente inactivo no impide corregir sus datos. Cambiar el descuento no recalcula los importes de pagos anteriores. La reactivación vuelve a habilitar el beneficio para su asignación; revisar el beneficio elegido antes de registrar una nueva cuota. No hay cambios de esquema, de conexión MySQL ni en el retiro del límite de solicitudes.
 
 Validación: 28 pruebas backend (incluyen permisos HTTP y los nuevos casos de beneficios) y tres pruebas frontend, compilación de ambos proyectos. Prueba adicional con MariaDB 10.11 aislada: creación, edición, desactivación/reactivación, eliminación sin uso, rechazo de eliminación con historial, renovación sin descuento inactivo, cobro con porcentaje actualizado, conservación de todos los campos de un pago anterior, edición de socio con beneficio desactivado y reversión de la edición si falla la auditoría. Sin conexiones ni cambios a bases del cliente.
+
+
+## Diagnóstico de conexión en el arranque
+
+Al iniciar el backend, una conexión directa con tiempo de espera de cinco segundos ejecuta únicamente SELECT 1. Registra [MYSQL_OK] o [MYSQL_ERROR_CONEXION] con host, puerto, base, usuario, presencia de contraseña y código/errno/sqlState originales del driver. No registra la URL, contraseña ni el mensaje crudo del error. La conexión se cierra después del diagnóstico; no se crean endpoints públicos, no se cambian credenciales ni tablas y no se reintentan escrituras. El pool de Prisma conserva su configuración.
+
+Ante un pool timeout con active=0 e idle=0, revisar este registro en Hostinger → Registros de runtime del nuevo despliegue. El objetivo es obtener el motivo real, no aumentar el pool ni afirmar que las credenciales son incorrectas sin evidencia. Para Node alojado en Hostinger, usar 127.0.0.1:3306; para conexiones desde la PC, usar el hostname remoto del panel y autorizar su IP.

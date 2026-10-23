@@ -5,6 +5,7 @@ import morgan from 'morgan';
 import swaggerUi from 'swagger-ui-express';
 import fs from 'node:fs';
 import path from 'node:path';
+import { diagnoseDatabaseConnection } from './config/database';
 import { env } from './config/env';
 import { swaggerSpec } from './config/swagger';
 import './types';
@@ -84,6 +85,7 @@ app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
 // Iniciar servidor
 const PORT = env.PORT || 3000;
 app.listen(PORT, () => {
+  void diagnoseDatabaseConnection();
   console.log(`🚀 Servidor corriendo en http://localhost:${PORT}`);
   console.log(`📊 Health check: http://localhost:${PORT}/health`);
   console.log(`📚 Swagger: http://localhost:${PORT}/api-docs`);
