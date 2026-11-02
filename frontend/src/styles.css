@@ -2939,3 +2939,17 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 .benefit-card > div:last-child { min-width: 0; flex: 1; }
 .benefit-card .plan-actions { flex-wrap: wrap; margin-top: 12px; }
 .benefit-card .plan-actions .btn { flex: 1 1 90px; }
+
+/* Historial y desglose financiero: controles adaptables y detalle dentro del modal. */
+.payment-filters { display: flex; flex-wrap: wrap; align-items: end; gap: 12px; }
+.payment-filters .field { flex: 1 1 160px; min-width: 0; }
+.payment-filters .field:last-of-type { flex-basis: 240px; }
+.payment-filters input, .payment-filters select { width: 100%; }
+.finance-detail-link { border: 0; background: transparent; padding: 0; color: inherit; font: inherit; text-align: left; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
+.finance-detail-link:hover { color: var(--lime); }
+.finance-detail-link:focus-visible { outline: 2px solid var(--lime); outline-offset: 4px; }
+.finance-detail-grid { margin-top: 16px; }
+.finance-description { white-space: pre-wrap; overflow-wrap: anywhere; }
+.finance-detail-grid .finance-description { grid-column: 1 / -1; }
+.finance-detail-grid p { margin: 0; }
+@media (max-width: 600px) { .finance-detail-grid { grid-template-columns: 1fr; } }

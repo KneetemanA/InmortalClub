@@ -2,13 +2,19 @@ import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { ArrowDownRight, ArrowUpRight, FolderPlus, Plus, Scale } from 'lucide-react';
 import { useAuth } from '../AuthContext';
 import { api, date, money, todayInput } from '../api';
-import type { Category, Movement } from '../types';
+import { paymentMethodLabel } from '../payment-utils';
+import type { Category, Movement, Payment } from '../types';
 import { Button, DateFilter, Empty, ErrorState, Field, Loading, Modal, ToastView } from '../components';
 
+type FinancialPayment = Omit<Payment, 'member' | 'plan' | 'user'> & { member: {firstName: string; lastName: string; dni: string | null}; plan: {name: string}; user: {id: string; name: string} };
+type FinancialMovement = Omit<Movement, 'user'> & {user: {id: string; name: string}};
+type CategoryTotal = { categoryId: string; category: string; type: string; total: number; count: number };
 type Summary = {
   period: { start: string; end: string };
   summary: { membershipIncome: number; otherIncome: number; totalIncome: number; totalExpense: number; balance: number };
-  byCategory: { category: string; type: string; total: number; count: number }[];
+  byCategory: CategoryTotal[];
+  payments: FinancialPayment[];
+  movements: FinancialMovement[];
 };
 type Period = 'weekly' | 'monthly' | 'yearly' | 'custom';
 type Preset = Exclude<Period, 'custom'>;
@@ -25,7 +31,8 @@ export default function Finances() {
   const [categoryId, setCategoryId] = useState('');
   const [periods, setPeriods] = useState<Record<Preset, Summary>>();
   const [custom, setCustom] = useState<Summary>();
-  const [movements, setMovements] = useState<Movement[]>([]);
+  const [detailCategory, setDetailCategory] = useState<CategoryTotal>();
+  const [detail, setDetail] = useState<FinancialPayment | FinancialMovement>();
   const [categories, setCategories] = useState<Category[]>([]);
   const [modal, setModal] = useState<'INCOME' | 'EXPENSE' | null>(null);
   const [categoryModal, setCategoryModal] = useState(false);
@@ -50,18 +57,10 @@ export default function Finances() {
   useEffect(() => { void load(); }, [load]);
 
   const active = period === 'custom' ? custom : periods?.[period];
-  const rangeStart = active?.period.start;
-  const rangeEnd = active?.period.end;
-  const loadMovements = useCallback(async () => {
-    if (!rangeStart || !rangeEnd || categoryId === 'MEMBERSHIP') { setMovements([]); return; }
-    try {
-      const query = new URLSearchParams({ startDate: rangeStart, endDate: rangeEnd });
-      if (categoryId) query.set('categoryId', categoryId);
-      const response = await api<Movement[]>(`/financial/movements?${query}`);
-      setMovements(response.data);
-    } catch (e) { setError(e instanceof Error ? e.message : 'Error al cargar movimientos'); }
-  }, [rangeStart, rangeEnd, categoryId]);
-  useEffect(() => { void loadMovements(); }, [loadMovements]);
+  const movements = active?.movements || [];
+  const categoryPayments = detailCategory?.categoryId === 'MEMBERSHIP' ? active?.payments || [] : [];
+  const categoryMovements = detailCategory ? movements.filter(m => m.category.id === detailCategory.categoryId) : [];
+  const closeDetails = () => { setDetailCategory(undefined); setDetail(undefined); };
 
   async function create(e: FormEvent<HTMLFormElement>) {
     e.preventDefault(); if (!modal) return; setSaving(true);
@@ -198,9 +197,9 @@ export default function Finances() {
         {active.byCategory.length ?
           <div className="category-list">
             {active.byCategory.map(c =>
-              <div key={`${c.type}-${c.category}`}>
+              <div key={c.categoryId}>
                 <i className={c.type === 'INCOME' ? 'income' : 'expense'} />
-                <span>{c.category}
+                <span><button type="button" className="finance-detail-link" onClick={()=>{setDetailCategory(c);setDetail(undefined)}}>{c.category} · Ver detalle</button>
                   <small>
                     {c.count} movimientos
                   </small>
@@ -225,7 +224,7 @@ export default function Finances() {
         </div>
         {movements.length ?
           <div className="compact-list movements">
-            {movements.slice(0, 10).map(m =>
+            {movements.map(m =>
               <div key={m.id}>
                 <i className={m.type === 'INCOME' ? 'income' : 'expense'}>
                   {m.type === 'INCOME' ? <ArrowUpRight />
@@ -234,8 +233,7 @@ export default function Finances() {
                   }
                 </i>
                 <div>
-                  <b>{m.category.name}
-                  </b>
+                  <button type="button" className="finance-detail-link" onClick={()=>{setDetailCategory(undefined);setDetail(m)}}>{m.category.name} · Ver detalle</button>
                   <span>
                     {m.description || 'Sin descripción'} · {date(m.movementDate)}
                   </span>
@@ -251,6 +249,40 @@ export default function Finances() {
         }
       </div>
     </section>
+
+    {(detailCategory || detail) && <Modal wide title={detail ? ('paymentDate' in detail ? 'Detalle de cuota' : 'Detalle de movimiento') : detailCategory!.category}
+      subtitle={`${date(active.period.start)} al ${date(active.period.end)}`} onClose={closeDetails}>
+      {detail ? <>
+        {detailCategory && <Button variant="ghost" onClick={()=>setDetail(undefined)}>← Volver al desglose</Button>}
+        {'paymentDate' in detail ? <div className="detail-grid finance-detail-grid">
+          <div><span>Socio</span><b>{detail.member.firstName} {detail.member.lastName}</b></div>
+          <div><span>DNI</span><b>{detail.member.dni || 'Sin DNI'}</b></div>
+          <div><span>Plan</span><b>{detail.plan.name}</b></div>
+          <div><span>Importe cobrado</span><b>{money(detail.finalAmount)}</b></div>
+          <div><span>Fecha de pago</span><b>{date(detail.paymentDate)}</b></div>
+          <div><span>Vencimiento</span><b>{date(detail.expirationDate)}</b></div>
+          <div><span>Forma de pago</span><b>{paymentMethodLabel(detail.paymentMethod)}</b>{detail.paymentMethod==='MIXED' && <p>Efectivo: {money(detail.cashAmount)}<br/>Transferencia: {money(detail.transferAmount)}</p>}</div>
+          <div><span>Registrado por</span><b>{detail.user.name}</b></div>
+          <div><span>Descuento aplicado al cobro</span><b>{Number(detail.discountPercentage)}% · {money(detail.discountAmount)}</b></div>
+          <div><span>Proporcional</span><b>{detail.prorated ? 'Sí' : 'No'}</b></div>
+          {Number(detail.adjustmentAmount || 0)!==0 && <div><span>Ajuste sobre tarifa</span><b>{money(detail.adjustmentAmount)}</b></div>}
+        </div> : <div className="detail-grid finance-detail-grid">
+          <div><span>Tipo</span><b>{detail.type==='INCOME'?'Ingreso':'Egreso'}</b></div>
+          <div><span>Categoría</span><b>{detail.category.name}</b></div>
+          <div><span>Monto</span><b>{money(detail.amount)}</b></div>
+          <div><span>Fecha</span><b>{date(detail.movementDate)}</b></div>
+          <div><span>Registrado por</span><b>{detail.user.name}</b></div>
+          <div className="finance-description"><span>Descripción</span><p>{detail.description || 'Sin descripción'}</p></div>
+        </div>}
+      </> : <>
+        <p className="modal-copy">{detailCategory!.count} movimientos · Total {money(detailCategory!.total)}</p>
+        <div className="table-scroll"><table><thead><tr><th>Fecha</th><th>{detailCategory!.categoryId==='MEMBERSHIP'?'Socio y plan':'Descripción'}</th><th>Importe</th><th>Detalle</th></tr></thead><tbody>
+          {categoryPayments.map(p=><tr key={p.id}><td data-label="Fecha">{date(p.paymentDate)}</td><td data-label="Socio y plan"><b>{p.member.firstName} {p.member.lastName}</b><small>{p.plan.name} · {paymentMethodLabel(p.paymentMethod)}</small></td><td data-label="Importe">{money(p.finalAmount)}</td><td data-label="Detalle"><Button variant="ghost" onClick={()=>setDetail(p)}>Ver pago</Button></td></tr>)}
+          {categoryMovements.map(m=><tr key={m.id}><td data-label="Fecha">{date(m.movementDate)}</td><td data-label="Descripción" className="finance-description">{m.description || 'Sin descripción'}</td><td data-label="Importe">{money(m.amount)}</td><td data-label="Detalle"><Button variant="ghost" onClick={()=>setDetail(m)}>Ver movimiento</Button></td></tr>)}
+        </tbody></table></div>
+      </>}
+      <div className="modal-actions"><Button variant="secondary" onClick={closeDetails}>Cerrar</Button></div>
+    </Modal>}
 
     {modal &&
       <Modal title={modal === 'INCOME' ? 'Registrar ingreso' : 'Registrar egreso'}

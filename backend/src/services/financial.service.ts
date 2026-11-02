@@ -152,6 +152,7 @@ export class FinancialService {
         },
         include: {
           category: true,
+          user: { select: { id: true, name: true } },
         },
       })),
       (categoryId && categoryId !== 'MEMBERSHIP' ? Promise.resolve([]) : prisma.payment.findMany({
@@ -164,7 +165,8 @@ export class FinancialService {
         },
         include: {
           plan: { select: { name: true } },
-          member: { select: { firstName: true, lastName: true } },
+          member: { select: { firstName: true, lastName: true, dni: true } },
+          user: { select: { id: true, name: true } },
         },
       })),
     ]);
@@ -195,6 +197,7 @@ export class FinancialService {
       const key = m.categoryId;
       if (!acc[key]) {
         acc[key] = {
+          categoryId: m.categoryId,
           category: m.category.name,
           type: m.type,
           total: 0,
@@ -209,6 +212,7 @@ export class FinancialService {
     // Agregar cuotas de membresía a las categorías
     if (membershipIncome > 0 || payments.length > 0) {
       byCategory['MEMBERSHIP'] = {
+        categoryId: 'MEMBERSHIP',
         category: 'Cuotas de Membresía',
         type: 'INCOME',
         total: membershipIncome,
@@ -229,8 +233,9 @@ export class FinancialService {
         balance,
       },
       paymentsCount: payments.length,
+      payments: [...payments].sort((a, b) => b.paymentDate.getTime() - a.paymentDate.getTime() || a.id.localeCompare(b.id)),
       byCategory: Object.values(byCategory),
-      movements: filteredMovements,
+      movements: [...filteredMovements].sort((a, b) => b.movementDate.getTime() - a.movementDate.getTime() || a.id.localeCompare(b.id)),
     };
   }
 
