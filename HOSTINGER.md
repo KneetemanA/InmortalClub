@@ -118,3 +118,10 @@ Las auditorías npm audit --omit=dev no señalan body-parser después de la actu
 - **Fecha de pago fija:** al registrar o renovar un pago ya no se elige la fecha: siempre es el momento de la carga, para administración y recepción. El servidor ignora cualquier fecha enviada. El vencimiento y el importe cobrado se siguen pudiendo indicar. Los pagos de socios importados también quedan con la fecha del día.
 - No requiere migraciones, semillas ni importaciones. Desplegar frontend y backend juntos.
 - Verificación: `npm test --prefix backend` (34 pruebas), `node --test frontend/tests/*.test.mjs`, build de Hostinger y prueba manual en MariaDB local con cuentas de administración y recepción.
+
+### Contador de pagos solo para administración y actualización automática
+
+- En **Pagos y cuotas → Todos**, recepción ya no ve la línea del contador de pagos.
+- Administración ve *N pagos registrados*: cuenta solo los pagos vigentes (los cancelados se informan aparte y no suman), junto con el total cobrado. Con búsqueda o fechas aplicadas muestra *X de N* y el total de los resultados.
+- La pantalla se actualiza sola cada 30 segundos y al volver a la pestaña, así se ven los pagos cargados desde otras computadoras sin recargar. Se pausa con la pestaña oculta; un fallo momentáneo de conexión no reemplaza la pantalla.
+- No requiere migraciones. Solo cambia el frontend.
