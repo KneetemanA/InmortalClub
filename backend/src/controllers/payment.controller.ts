@@ -166,7 +166,7 @@ export class PaymentController {
         });
       }
 
-      const { paymentMethod, cashAmount, expirationDate, paymentDate, amount } = req.body;
+      const { paymentMethod, cashAmount, expirationDate, amount } = req.body;
 
       if (!paymentMethod) {
         return res.status(400).json({
@@ -175,7 +175,7 @@ export class PaymentController {
         });
       }
 
-      const payment = await paymentService.renewPlan(id, userId, paymentMethod, cashAmount, expirationDate, paymentDate, amount);
+      const payment = await paymentService.renewPlan(id, userId, paymentMethod, cashAmount, expirationDate, undefined, amount);
 
       res.json({
         success: true,

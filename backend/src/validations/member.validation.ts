@@ -9,10 +9,17 @@ export const createMemberSchema = z.object({
   email: z.string().email('Email inválido').optional(),
   birthDate: z.iso.date().transform(str => new Date(`${str}T12:00:00-03:00`)).optional(),
   notes: z.string().optional(),
-  planId: z.string().uuid('ID de plan inválido'),
+  planId: z.string().uuid('ID de plan inválido').optional(),
   benefitId: z.string().uuid('ID de beneficio inválido').optional(),
   ...paymentFields,
+  paymentMethod: paymentFields.paymentMethod.optional(),
   prorated: z.boolean().optional(),
+  // Día de prueba: alta sin plan ni pago.
+  trial: z.boolean().optional(),
+}).superRefine((data, ctx) => {
+  if (data.trial) return;
+  if (!data.planId) ctx.addIssue({ code: 'custom', path: ['planId'], message: 'Seleccioná un plan' });
+  if (!data.paymentMethod) ctx.addIssue({ code: 'custom', path: ['paymentMethod'], message: 'Seleccioná el método de pago' });
 });
 
 export const updateMemberSchema = z.object({

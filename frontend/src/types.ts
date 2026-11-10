@@ -12,7 +12,7 @@ export type Payment = {
 export type Member = {
   id: string; firstName: string; lastName: string; dni: string | null; phone: string; importKey?: string | null; importedExpirationDate?: string | null; currentPlanId?: string | null; currentPlan?: Plan | null; importedData?: {method:string;cashAmount:number;transferAmount:number;warnings:string[]}; email?: string;
   birthDate?: string; enrollmentDate: string; status: 'ACTIVE' | 'INACTIVE'; notes?: string;
-  benefits: MemberBenefit[]; payments: Payment[];
+  benefits: MemberBenefit[]; payments: Payment[]; _count?: { payments: number };
 };
 export type Movement = { id: string; type: 'INCOME' | 'EXPENSE'; amount: string | number; description?: string; movementDate: string; category: { id: string; name: string; type: string }; user: User };
 export type Category = { id: string; name: string; type: 'INCOME' | 'EXPENSE'; active: boolean };

@@ -109,3 +109,12 @@ Las auditorías npm audit --omit=dev no señalan body-parser después de la actu
 - El desglose y sus totales se generan en la misma respuesta del resumen. Las categorías se identifican por ID, aunque compartan nombre. Finanzas mantiene su acceso exclusivo para administración; recepción mantiene sus permisos de Socios/Pagos.
 - No requiere migraciones, semillas ni importaciones. Aplicar el parche en `hostinger-mysql`, probar antes de publicar y desplegar frontend y backend juntos.
 - Verificación automatizada: `npm test --prefix backend` y `node --test frontend/tests/*.test.mjs`. Incluye límites de fechas argentinos, orden numérico, búsqueda, coherencia de desglose/totales y selección del responsable sin contraseñas.
+
+### Día de prueba, ventas de recepción y fecha de pago fija
+
+- **Día de prueba:** en **Socios → Nuevo socio**, la casilla *Viene a probar (sin plan ni pago)* registra solo los datos de la persona, sin plan, beneficio, pago ni vencimiento. En la lista aparece como **Día de prueba** y no cuenta como vencido en Pagos ni en el Resumen. Si se queda, su primer pago se registra en **Pagos y cuotas → Registrar pago** y deja de estar en prueba. Se identifica sin columnas nuevas: socio sin pagos que no proviene del Excel.
+- **Recepción sin totales:** en **Pagos y cuotas → Todos**, recepción ve la cantidad de pagos pero no el importe cobrado en los resultados. Administración lo sigue viendo.
+- **Ventas:** nueva sección para recepción y administración. Se registra categoría de ingreso activa (Bebidas, Merchandising, Otros o las que cree el administrador como *Ingreso*), detalle, importe y forma de pago (efectivo o transferencia). La venta queda como ingreso con la fecha y hora de la carga, aparece en **Finanzas** con quién la registró y en Auditoría. Recepción solo ve sus ventas del día, sin totales, y sigue sin acceso a Finanzas ni al Resumen (403).
+- **Fecha de pago fija:** al registrar o renovar un pago ya no se elige la fecha: siempre es el momento de la carga, para administración y recepción. El servidor ignora cualquier fecha enviada. El vencimiento y el importe cobrado se siguen pudiendo indicar. Los pagos de socios importados también quedan con la fecha del día.
+- No requiere migraciones, semillas ni importaciones. Desplegar frontend y backend juntos.
+- Verificación: `npm test --prefix backend` (34 pruebas), `node --test frontend/tests/*.test.mjs`, build de Hostinger y prueba manual en MariaDB local con cuentas de administración y recepción.

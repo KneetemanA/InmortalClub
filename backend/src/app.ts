@@ -19,6 +19,7 @@ import dashboardRoutes from './routes/dashboard.routes';
 import planRoutes from './routes/plan.routes';
 import benefitRoutes from './routes/benefit.routes';
 import auditRoutes from './routes/audit.routes';
+import saleRoutes from './routes/sale.routes';
 
 const app: Express = express();
 app.set('trust proxy', 1);
@@ -42,6 +43,7 @@ app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/plans', planRoutes);
 app.use('/api/benefits', benefitRoutes);
 app.use('/api/audit', auditRoutes);
+app.use('/api/sales', saleRoutes);
 
 // Health check
 app.get('/health', (req: Request, res: Response) => {

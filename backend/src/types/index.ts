@@ -8,9 +8,10 @@ export interface CreateMemberDTO {
   email?: string;
   birthDate?: Date;
   notes?: string;
-  planId: string;
+  planId?: string;
   benefitId?: string;
-  paymentMethod: PaymentMethod;
+  paymentMethod?: PaymentMethod;
+  trial?: boolean;
   cashAmount?: number;
   userId: string;
   prorated?: boolean;

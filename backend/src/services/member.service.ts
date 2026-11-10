@@ -10,6 +10,8 @@ const auditService = new AuditService();
 export class MemberService {
   // Crear nuevo miembro
   async createMember(data: CreateMemberDTO) {
+    if (data.trial) return this.createTrialMember(data);
+    if (!data.planId || !data.paymentMethod) throw new Error('Plan y método de pago son requeridos');
     // Validar que el plan existe
     const plan = await prisma.plan.findUnique({
       where: { id: data.planId },
@@ -134,11 +136,39 @@ export class MemberService {
     return member;
   }
 
+  // Alta en día de prueba: sin plan, sin beneficio y sin pago. No suma ingresos.
+  // El primer pago se registra después desde Pagos y cuotas.
+  private async createTrialMember(data: CreateMemberDTO) {
+    const member = await prisma.member.create({
+      data: {
+        firstName: data.firstName,
+        lastName: data.lastName,
+        dni: data.dni,
+        phone: data.phone,
+        email: data.email === '' ? null : data.email,
+        birthDate: data.birthDate,
+        notes: data.notes,
+        status: MemberStatus.ACTIVE,
+      },
+      include: { currentPlan: true, benefits: { include: { benefit: true } }, payments: { include: { plan: true } } },
+    });
+    await auditService.logAction({
+      userId: data.userId,
+      action: 'CREATE',
+      entity: 'MEMBER',
+      entityId: member.id,
+      newData: { id: member.id, firstName: member.firstName, lastName: member.lastName, dni: member.dni, trial: true },
+    });
+    return member;
+  }
+
   // Obtener todos los miembros activos
   async getActiveMembers(includeInactive = false) {
     return prisma.member.findMany({
       where: includeInactive ? {} : { status: MemberStatus.ACTIVE },
       include: {
+        // Incluye cancelados: permite distinguir un día de prueba de un socio con pagos cancelados.
+        _count: { select: { payments: true } },
         currentPlan: true,
         benefits: {
           include: {

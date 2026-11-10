@@ -1,6 +1,6 @@
 import prisma from '../config/database';
 import { MemberStatus } from '@prisma/client';
-
+import { TRIAL_MEMBER_WHERE } from '../utils/trial';
 export class DashboardService {
     // Obtener todas las estadísticas del dashboard
     async getDashboardStats() {
@@ -172,6 +172,8 @@ export class DashboardService {
         const activeMembers = await prisma.member.findMany({
             where: {
                 status: MemberStatus.ACTIVE,
+                // Los socios en día de prueba no tienen cuota: no cuentan como vencidos.
+                NOT: TRIAL_MEMBER_WHERE,
             },
             select: {
                 id: true,

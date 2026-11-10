@@ -1,3 +1,4 @@
+import { TRIAL_MEMBER_WHERE } from '../utils/trial';
 import prisma from '../config/database';
 import {memberExpiration} from '../utils/member-coverage';
 import { argentinaDate, monthRange, PaymentInputError, splitPayment } from '../utils/payment';
@@ -332,6 +333,8 @@ export class PaymentService {
         const allActiveMembers = await prisma.member.findMany({
             where: {
                 status: 'ACTIVE',
+                // Los socios en día de prueba no tienen cuota: no cuentan como vencidos.
+                NOT: TRIAL_MEMBER_WHERE,
             },
             select: {
                 id: true,
